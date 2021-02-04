@@ -17,7 +17,7 @@ Om något slutar fungera, starta om Blender. (Enklast så.)
 
 **Updateringar**
 
-* 2021-02-24
+* 2021-02-04
     - Nytt interface. Det mesta ska gå att göra via klienten.
     - Nu går det att lägga ut legobitar, slumpmässigt eller på specifik plats.
     - Servern, och inte klienten, animerar roboten  
