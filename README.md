@@ -1,6 +1,6 @@
 # TSBB18 Inbyggda perceptionssystem
 
-Detta är en **problembaserad projektkurs**, där studenterna, i grupper om 4&ndash;5 studenter, ska **styra en kamerabaserad legosorteringsrobot**.
+Detta är en **problembaserad projektkurs**, där studenterna, i grupper om 2&ndash;4 studenter, ska **styra en kamerabaserad legosorteringsrobot**.
 Arbetet sker i formen av **tre delprojekt**, där studentgrupperna själva söker i olika resurskällor för att lösa de olika uppgifter och problem man stöter på under projektens gång.
 Grupperna får även regelbunden handledningshjälp under hela kursen.
 
