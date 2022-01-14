@@ -4,7 +4,7 @@ Detta är en **problembaserad projektkurs**, där studenterna, i grupper om 4&nd
 Arbetet sker i formen av **tre delprojekt**, där studentgrupperna själva söker i olika resurskällor för att lösa de olika uppgifter och problem man stöter på under projektens gång.
 Grupperna får även regelbunden handledningshjälp under hela kursen.
 
-Se även information i **<a href="https://liu.se/studieinfo/kurs/tsbb18/vt-2021">Studieinfo</a>** och i **<a href="https://cloud.timeedit.net/liu/web/schema/">TimeEdit</a>**.
+Se även information i **<a href="https://liu.se/studieinfo/kurs/tsbb18/vt-2022">Studieinfo</a>** och i **<a href="https://cloud.timeedit.net/liu/web/schema/">TimeEdit</a>**.
 
 
 ## Föreläsningar
@@ -18,8 +18,7 @@ Föreläsningarna kommer att hållas via Zoom.
 ## Lärare på kursen
 
 - **<a href="https://liu.se/medarbetare/marwa32">Mårten Wadenbäck</a>** &mdash; examinator, handledning
-- **<a href="https://liu.se/medarbetare/mikpe75">Mikael Persson</a>** &mdash; seminarier, handledning
-- **<a href="https://liu.se/medarbetare/andro44">Andreas Robinson</a>** &mdash; hårdvarusupport
+- **<a href="https://liu.se/en/employee/frevi92">Fredrik Viksten</a>** &mdash; hårdvarusupport
 - **<a href="https://liu.se/medarbetare/ingra75">Ingemar Ragnemalm</a>** &mdash; seminarium om inverskinematik
 
 
