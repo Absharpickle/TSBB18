@@ -12,7 +12,7 @@ Se även information i **<a href="https://liu.se/studieinfo/kurs/tsbb18/vt-2022"
 Kursens schema finns i **<a href="https://cloud.timeedit.net/liu/web/schema/">TimeEdit</a>**.
 Föreläsningarna kommer att hållas via Zoom.
 
-- Inledande föreläsningen hålls i Zoom-rum **<a href="https://liu-se.zoom.us/j/64885170112">648 8517 0112</a>**.
+- Inledande föreläsningen hålls i Zoom-rum **<a href="https://liu-se.zoom.us/j/64885170112">648 8517 0112</a>**. De slides som visades under föreläsningen finns **<a href="https://www.cvl.isy.liu.se/education/undergraduate/TSBB18/Lecture-Intro.pdf">här</a>**.
 
 
 ## Lärare på kursen
