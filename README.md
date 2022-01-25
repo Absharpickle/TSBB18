@@ -22,6 +22,10 @@ Föreläsningarna kommer att hållas via Zoom.
 - **<a href="https://liu.se/medarbetare/ingra75">Ingemar Ragnemalm</a>** &mdash; seminarium om inverskinematik
 
 
+## Delprojekt
+ - **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/master/project_1.md">Delprojekt 1</a>**
+
+
 ## Examination
 
 Kursen har ett examinationsmoment, PRA1 (betyg G/U), som avser det projektarbete med de tre delprojekten som utförs under läsperioden.
