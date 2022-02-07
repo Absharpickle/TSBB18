@@ -71,8 +71,7 @@ def place_lego(name, size=(1,1), color='red', x=0.0, y=-100.0, angle=45.0):
     """ Place a piece of lego, anywhere on the ground plane. Distances in millimeters """
 
     valid_sizes = {(1, 1), (2, 1), (2, 2), (3, 1), (3, 2), (4, 1), (4, 2)}
-    #valid_colors = {'red', 'green', 'blue'}
-    valid_colors = {'red', 'green', 'blue', 'yellow', 'white', 'black'}
+    valid_colors = {'red', 'green', 'blue'}
 
     assert size in valid_sizes
     assert color in valid_colors
