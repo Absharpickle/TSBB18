@@ -23,7 +23,8 @@ Föreläsningarna kommer att hållas via Zoom.
 
 
 ## Delprojekt
- - **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/master/project_1.md">Delprojekt 1</a>**
+ - **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/master/project_1.md">Delprojekt 1 &rarr;</a>**
+ - **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/master/project_2.md">Delprojekt 2 &rarr;</a>**
 
 
 ## Examination
