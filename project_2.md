@@ -5,6 +5,7 @@
 I delprojekt 2 ska varje grupp skapa ett system som kan:
  - Styra gripklon på en robotarm till efterfrågad position på arbetsytan framför robotarmen.
  - Utifrån en kamerabild av arbetsytan tala om på vilka koordinater det finns legobitar.
+ - ”Plocka upp” legobitarna i lämplig (någorlunda snabb) ordning.
 
  Delprojekt 2 görs i en för kursen utvecklad **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/master/robot_sim/README.md">robotsimulator</a>**.
 
