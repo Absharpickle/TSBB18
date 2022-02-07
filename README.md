@@ -13,13 +13,14 @@ Kursens schema finns i **<a href="https://cloud.timeedit.net/liu/web/schema/">Ti
 Föreläsningarna kommer att hållas via Zoom.
 
 - Inledande föreläsningen hålls i Zoom-rum **<a href="https://liu-se.zoom.us/j/64885170112">648 8517 0112</a>**. De slides som visades under föreläsningen finns **<a href="https://www.cvl.isy.liu.se/education/undergraduate/TSBB18/Lecture-Intro.pdf">här</a>**.
+- Föreläsning 2, *inverskinematik och koordinatsystem*, hålls på plats i Systemet.
 
 
 ## Lärare på kursen
 
 - **<a href="https://liu.se/medarbetare/marwa32">Mårten Wadenbäck</a>** &mdash; examinator, handledning
 - **<a href="https://liu.se/en/employee/frevi92">Fredrik Viksten</a>** &mdash; hårdvarusupport
-- **<a href="https://liu.se/medarbetare/ingra75">Ingemar Ragnemalm</a>** &mdash; seminarium om inverskinematik
+- **<a href="https://liu.se/medarbetare/ingra75">Ingemar Ragnemalm</a>** &mdash; föreläsning om inverskinematik
 
 
 ## Delprojekt
