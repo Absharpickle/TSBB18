@@ -70,6 +70,29 @@ def control_claw(robot_id, open_claw=True):
         p.stepSimulation()
         time.sleep(1./240.)
 
+def state(robot_id):
+    """
+    Print the world coordinates (position and orientation) of each joint of a robot.
+
+    Args:
+        robot_id (int): The ID of the robot loaded in PyBullet.
+    """
+    
+    joint_names = ["base", "shoulder", "elbow", "wrist_pitch", "wrist_roll", "gripper_base", "gripper_fix", "gripper_movable"]
+    num_joints = p.getNumJoints(robot_id) - 1
+
+    for joint_index in range(num_joints):        
+        link_state = p.getLinkState(robot_id, joint_index)
+        world_position = link_state[0]  # [0] is the world position (x, y, z)
+        world_orientation = link_state[1]  # [1] is the orientation (quaternion)
+
+        joint_name = joint_names[joint_index] if joint_index < len(joint_names) else f"Joint {joint_index}"
+
+        print(f"Joint {joint_index} ({joint_name}):")
+        print(f"  World Position: {world_position}")
+        print(f"  World Orientation (Quaternion): {world_orientation}")
+
+
 def create_lego_brick(color, position, scale=(0.6, 0.3, 0.3)):
     """
     Create a Lego brick in the PyBullet simulation.

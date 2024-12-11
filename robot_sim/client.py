@@ -14,10 +14,14 @@ def main():
         color=[1, 0, 0],
         position=(1.82, 1.82, 0.1)
     )
-        
+
+    # Print the world coordinates (position and orientation) of each joint
+    cvl_robot.state(robot_id)
+    
     cvl_robot.move_arm(robot_id, base=0.7, shoulder=0.6, elbow=1.0, wrist_pitch=0.8)
     cvl_robot.control_claw(robot_id,open_claw=False)
     cvl_robot.control_claw(robot_id,open_claw=True)
+    cvl_robot.state(robot_id)
 
     cvl_robot.move_brick_to_position(brick_id,[1.82, 1.82, 1])
 
