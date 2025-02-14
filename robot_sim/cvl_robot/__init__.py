@@ -38,7 +38,7 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
     return robot_id
 
 
-def move_arm(robot_id, base=0.7, shoulder=0.6, elbow=1.0, wrist_pitch=0.8):
+def move_arm(robot_id, base=90, shoulder=90, elbow=90, wrist_pitch=90):
     """
     Move the robot arm. base values are in degrees.
 
@@ -52,10 +52,10 @@ def move_arm(robot_id, base=0.7, shoulder=0.6, elbow=1.0, wrist_pitch=0.8):
     Returns:
         None
     """
-    p.resetJointState(robot_id, 0, base)
-    p.resetJointState(robot_id, 1, elbow)
-    p.resetJointState(robot_id, 2, shoulder)
-    p.resetJointState(robot_id, 3, wrist_pitch)
+    p.resetJointState(robot_id, 0, np.deg2rad(base))
+    p.resetJointState(robot_id, 1, np.deg2rad(shoulder))
+    p.resetJointState(robot_id, 2, np.deg2rad(elbow))
+    p.resetJointState(robot_id, 3, np.deg2rad(wrist_pitch))
 
     for _ in range(240):  # Simulate steps for the motion
         p.stepSimulation()

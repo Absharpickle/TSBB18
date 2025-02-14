@@ -18,7 +18,8 @@ def main():
     # Print the world coordinates (position and orientation) of each joint
     cvl_robot.state(robot_id)
     
-    cvl_robot.move_arm(robot_id, base=0.7, shoulder=0.6, elbow=1.0, wrist_pitch=0.8)
+    #cvl_robot.move_arm(robot_id, base=90, shoulder=90, elbow=90, wrist_pitch=90)
+    cvl_robot.move_arm(robot_id, base=0, shoulder=45, elbow=45, wrist_pitch=45)
     cvl_robot.control_claw(robot_id,open_claw=False)
     cvl_robot.control_claw(robot_id,open_claw=True)
     cvl_robot.state(robot_id)
