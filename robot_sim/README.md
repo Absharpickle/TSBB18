@@ -3,7 +3,7 @@
 **Brief instruction:**
 
 - Install **<a href="https://pybullet.org/wordpress">Pybullet</a>**.
-- Download the course **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/main/robot_sim/cvl_robot">robot simulator package</a>** and the **<a href="https://gitlab.liu.se/cvl/tsbb18/-/blob/main/robot_sim/client.py">`client.py`</a>** script.
+- Git clone this repository **<a href="https://gitlab.liu.se/cvl/tsbb18/-/tree/main">tsbb18</a> 
 - Run the `client.py` file from the terminal.
 
 **In the 3D window:**

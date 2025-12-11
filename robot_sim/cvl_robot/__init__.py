@@ -34,7 +34,7 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
     Returns:
         int: The unique ID of the created robot.
     """
-    robot_id = p.loadURDF("braccio.urdf", position, useFixedBase=True, globalScaling=scale)
+    robot_id = p.loadURDF("cvl_robot/cvl-arm.urdf", position, useFixedBase=True, globalScaling=scale)
     return robot_id
 
 
@@ -107,12 +107,12 @@ def create_lego_brick(color, position, scale=(0.6, 0.3, 0.3)):
     """
     collision_shape_id = p.createCollisionShape(
         shapeType=p.GEOM_MESH,
-        fileName="lego.obj",
+        fileName="cvl_robot/lego.obj",
         meshScale=scale
     )
     visual_shape_id = p.createVisualShape(
         shapeType=p.GEOM_MESH,
-        fileName="lego.obj",
+        fileName="cvl_robot/lego.obj",
         meshScale=scale,
         rgbaColor=color + [1]  # Add alpha channel
     )

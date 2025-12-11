@@ -1,0 +1,198 @@
+<?xml version="1.0"?>
+<robot name="visual">
+
+  <material name="gray">
+    <color rgba="0.3 0.3 0.3 1"/>
+  </material>
+  <material name="red">
+    <color rgba="0.8 0 0 1"/>
+  </material>
+  <material name="white">
+    <color rgba="0.8 0.8 0.8 1"/>
+  </material>
+
+  <link name="bottom_dummy" /> 
+
+  <joint name="bottom_dummy" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" lower="-3.14" upper="3.14" velocity="4.0"/>
+    <parent link="bottom_dummy"/>
+    <child link="bottom_mount"/>
+  </joint>
+
+  <link name="bottom_mount">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/bottom_mount.stl" scale="0.001 0.001 0.001" />     
+      </geometry>
+      <material name="white"/> 
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/bottom_mount.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/> 
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </collision>
+  </link>
+
+  <joint name="joint1" type="revolute">
+    <origin xyz="0 0 0.0211" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000.0" lower="-1.4" upper="1.4" velocity="4.8"/>
+    <parent link="bottom_mount"/>
+    <child link="link1_arm"/>
+  </joint>
+
+  <link name="link1_arm">
+    <visual>
+      <origin xyz="0 0 -0.01" rpy="3.14 0 0"/>
+      <geometry>
+        <mesh filename="meshes/link1_arm.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/> 
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link1_arm.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.01" rpy="3.14 0 0"/> 
+    </collision>
+  </link>
+
+  <joint name="joint2" type="revolute">
+    <origin xyz="0 0 0.111" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000.0" lower="-2.6" upper="2.6" velocity="4.0"/>
+    <parent link="link1_arm"/>
+    <child link="link2_arm"/>
+  </joint>
+
+  <link name="link2_arm">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link2_arm.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.02" rpy="0 0 1.57"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link2_arm.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.02" rpy="0 0 1.57 "/> 
+    </collision>
+  </link>
+
+  <joint name="joint3" type="revolute">
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000.0" lower="-2.6" upper="2.6" />
+    <parent link="link2_arm"/>
+    <child link="link3_wrist"/>
+  </joint>
+
+  <link name="link3_wrist">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link3_wrist.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 0" rpy="0 -1.57 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link3_wrist.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 0" rpy="0 -1.57 0" />
+    </collision>
+  </link>
+
+  <joint name="joint4" type="fixed">
+    <origin xyz="0 0 0.0524" rpy="-3.14 0 0" />
+    <axis xyz="0 0 1" />
+    <limit velocity="4.8" effort="1" lower="-3.14" upper="3.14" />
+    <parent link="link3_wrist" />
+    <child link="claw_mount" />
+  </joint>
+
+  <link name="claw_mount">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/claw_mount.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 0" rpy="0 0 0" /> 
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/claw_mount.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 0" rpy="0 0 0" /> 
+    </collision>
+  </link>
+  
+  <joint name="gripper_left_joint" type="prismatic" >
+    <origin xyz="0 0 0" rpy="0 0 3.14"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000.0" lower="0.0" upper="0.03" velocity="4.0"/>
+    <parent link="claw_mount"/>
+    <child link="gripper_left_link"/>
+  </joint>
+
+  <link name="gripper_left_link">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/claw.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.04" rpy="0 0 0" /> 
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/claw.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.04" rpy="0 0 0" /> 
+    </collision>
+  </link>
+
+  <joint name="gripper_right_joint_mimic" type="fixed">
+    <parent link="gripper_left_link" />
+    <child link="dummy_mimic_fix" />
+  </joint>
+
+  <link name="dummy_mimic_fix"/>
+
+  <joint name="gripper_right_joint" type="prismatic">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="1000.0" lower="0.0" upper="0.03" velocity="4.0"/>
+    <parent link="claw_mount"/>
+    <child link="gripper_right_link"/>
+  </joint>
+
+  <link name="gripper_right_link">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/claw.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.04" rpy="0 0 0" /> 
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/claw.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white"/>
+      <origin xyz="0 0 -0.04" rpy="0 0 0" /> 
+    </collision>
+  </link>
+
+</robot>
