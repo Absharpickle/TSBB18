@@ -35,10 +35,20 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
         int: The unique ID of the created robot.
     """
     robot_id = p.loadURDF("cvl_robot/cvl-arm.urdf", position, useFixedBase=True, globalScaling=scale)
+
+    #for i in range(p.getNumJoints(robot_id)):
+    #    info = p.getJointInfo(robot_id, i)
+    #    print(f"{i}: parent={info[16]}, name={info[1].decode()}")
+    #for i in range(1, 4):
+    #    info = p.getJointInfo(robot_id, i)
+    #    axis = info[13]
+    #    print(f"joint{i} axis = {axis}")
+#
+    #return
     return robot_id
 
 
-def move_arm(robot_id, base=90, shoulder=90, elbow=90, wrist_pitch=90):
+def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0):
     """
     Move the robot arm. base values are in degrees.
 
@@ -47,7 +57,7 @@ def move_arm(robot_id, base=90, shoulder=90, elbow=90, wrist_pitch=90):
         base (float): Base joint angle in degrees.
         shoulder (float): Shoulder joint angle in degrees.
         elbow (float): Elbow joint angle in degrees.
-        wrist_pitch (float): Wrist pitch joint angle in degrees.
+        wrist (float): Wrist joint angle in degrees.
 
     Returns:
         None
@@ -55,42 +65,55 @@ def move_arm(robot_id, base=90, shoulder=90, elbow=90, wrist_pitch=90):
     p.resetJointState(robot_id, 0, np.deg2rad(base))
     p.resetJointState(robot_id, 1, np.deg2rad(shoulder))
     p.resetJointState(robot_id, 2, np.deg2rad(elbow))
-    p.resetJointState(robot_id, 3, np.deg2rad(wrist_pitch))
+    p.resetJointState(robot_id, 3, np.deg2rad(wrist))
 
     for _ in range(240):  # Simulate steps for the motion
         p.stepSimulation()
         time.sleep(1./240.)
 
 def control_claw(robot_id, open_claw=True):
-    claw_joint_indices = 7
-    angle = 0.17 if open_claw else 1.27
-    p.resetJointState(robot_id, claw_joint_indices, angle)
-    #p.setJointMotorControl2(robot_id, claw_joint_indices, p.POSITION_CONTROL, angle)
+    GRIPPER_MIN = 0.0      # fully closed
+    GRIPPER_MAX = 0.3     # fully open (3 cm)
+    target = GRIPPER_MAX if open_claw else GRIPPER_MIN
+    p.resetJointState(robot_id, 5, target)  # left 
+    p.resetJointState(robot_id, 7, target)  # right 
+
+    # simulation steps
     for _ in range(60):
         p.stepSimulation()
         time.sleep(1./240.)
 
 def state(robot_id):
     """
-    Print the world coordinates (position and orientation) of each joint of a robot.
+    Print the world coordinates (position) of each joint of a robot.
 
     Args:
         robot_id (int): The ID of the robot loaded in PyBullet.
     """
     
-    joint_names = ["base", "shoulder", "elbow", "wrist_pitch", "wrist_roll", "gripper_base", "gripper_fix", "gripper_movable"]
-    num_joints = p.getNumJoints(robot_id) - 1
+    controlled_joints = {
+        0: "base",
+        1: "shoulder",
+        2: "elbow",
+        3: "wrist",
+        5: "gripper_left",
+        7: "gripper_right"
+    }
 
-    for joint_index in range(num_joints):        
-        link_state = p.getLinkState(robot_id, joint_index)
-        world_position = link_state[0]  # [0] is the world position (x, y, z)
-        world_orientation = link_state[1]  # [1] is the orientation (quaternion)
+    print("\n=== JOINT STATE ===")
+    for j, name in controlled_joints.items():
+        angle = p.getJointState(robot_id, j)[0]
+        link_state = p.getLinkState(robot_id, j)
+        pos, orn = link_state[0], link_state[1]
 
-        joint_name = joint_names[joint_index] if joint_index < len(joint_names) else f"Joint {joint_index}"
+        print(f"{name:14s}")
+        print(f"  angle:       {np.rad2deg(angle):7.2f}°")
+        print(f"  world pos:   {np.array(pos)}")
 
-        print(f"Joint {joint_index} ({joint_name}):")
-        print(f"  World Position: {world_position}")
-        print(f"  World Orientation (Quaternion): {world_orientation}")
+    # end effector = wrist tip
+    ee = p.getLinkState(robot_id, 3)[0]
+    print("\n=== END EFFECTOR (tip) ===")
+    print(f"  world pos:   {np.array(ee)}\n")
 
 
 def create_lego_brick(color, position, scale=(0.6, 0.3, 0.3)):
@@ -171,7 +194,7 @@ def remove_brick(brick_id):
         print(f"Error removing Lego brick with ID {brick_id}: {e}")
 
 
-def capture_image(image_width=640, image_height=480, camera_position=(2, -3, 1), target_position=(2, 0, 0), output_filename="captured_image.png"):
+def capture_image(image_width=640, image_height=480, camera_position=(2, -4, 5), target_position=(2, 0, 0), output_filename="captured_image.png"):
     """
     Capture an image from the simulation, save it as a PNG, and return the image as OpenCV data.
 
