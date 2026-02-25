@@ -13,12 +13,12 @@ from cvl_robot import *
 
 def main():
     # Initialize the simulation
-    cvl_robot.initialize_simulation(gui=True)
+    initialize_simulation(gui=True)
 
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
 
     # Create the Braccio robotic arm
-    robot_id = cvl_robot.create_braccio_arm(position=(0, 0, 0.02))
+    robot_id = create_braccio_arm(position=(0, 0, 0.02))
       
     # Create Lego bricks      
     
@@ -27,7 +27,7 @@ def main():
     for _ in range(120):
         p.stepSimulation()
 
-    rgb_image = cvl_robot.capture_image()
+    rgb_image = capture_image()
 
     pixel_coords = find_all_bricks(rgb_image)
 

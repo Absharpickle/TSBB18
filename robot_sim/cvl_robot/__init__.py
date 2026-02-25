@@ -286,8 +286,6 @@ def capture_image(image_width=640, image_height=480, camera_position=(2, -4, 5),
         print(f"Error capturing and saving image: {e}")
         return None
 
-# -- FIND BRICKS ---
-
 def find_all_bricks(rgb_image):
     if rgb_image.shape[2] == 4:
         bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGRA2BGR)
@@ -346,8 +344,6 @@ def get_pixel_coordinates(image):
     cv2.destroyAllWindows()
     return coords
 
-# --- MOVE ROBOT TO XYZ ---
-
 def move_to_xyz(robot_id, target_x, target_y, target_z, stop_on_contact=False):
     tip_index = 4
     yaw = math.atan2(target_y, target_x)
@@ -382,7 +378,7 @@ def move_to_xyz(robot_id, target_x, target_y, target_z, stop_on_contact=False):
             # GRADUAL APPROACH
             step_z = current_wrist_z - (z_distance * (s / num_steps))
             
-            joint_poses = p.calculateInverseKinematics(
+            joint_poses = calculate_jacobian_ik(
                 robot_id, tip_index, [adjusted_x, adjusted_y, step_z]
             )
             
@@ -412,11 +408,11 @@ def move_to_xyz(robot_id, target_x, target_y, target_z, stop_on_contact=False):
         for _ in range(60):
             p.stepSimulation()
             time.sleep(1./240.)
-            
+
     # --- NORMAL MOVEMENT ---
     else:
         target_pos = [adjusted_x, adjusted_y, final_wrist_z]
-        joint_poses = p.calculateInverseKinematics(robot_id, tip_index, target_pos)
+        joint_poses = calculate_jacobian_ik(robot_id, tip_index, target_pos)
         
         move_arm(robot_id, 
                            base=np.rad2deg(joint_poses[0]), 
@@ -427,9 +423,6 @@ def move_to_xyz(robot_id, target_x, target_y, target_z, stop_on_contact=False):
         for _ in range(240):
             p.stepSimulation()
             time.sleep(1./240.)
-
-
-# --- SPAWN RANDOM LEGOS ---
 
 def spawn_random_legos():
     
@@ -483,8 +476,6 @@ def spawn_random_legos():
             
     return spawned_bricks
 
-# --- DROP LEGO ---
-
 def drop_lego_brick(robot_id, storage_x, storage_y):
     move_to_xyz(robot_id, storage_x, storage_y, target_z=0.80)
     move_to_xyz(robot_id, storage_x, storage_y, target_z=0.60)
@@ -494,8 +485,6 @@ def drop_lego_brick(robot_id, storage_x, storage_y):
     for _ in range(120):
         p.stepSimulation()
         time.sleep(1./120.)
-
-# --- PICK UP LEGO ---
 
 def pick_up_lego(robot_id, target_x, target_y):
     
@@ -508,8 +497,6 @@ def pick_up_lego(robot_id, target_x, target_y):
         p.stepSimulation()
         time.sleep(1./120.)
                 
-# -- STANDARD POSE ---
-
 def standard_pose(robot_id):
     print("Lifting arm to upright position")
     
@@ -543,8 +530,6 @@ def standard_pose(robot_id):
     
     print("Arm is in upright position")
 
-# -- PIXEL TO WORLD ---
-
 def pixel_to_world_coordinates(cX, cY):
     image_points = np.array([
         [317, 150],     # Values from calibration
@@ -569,7 +554,103 @@ def pixel_to_world_coordinates(cX, cY):
     world_point_y = world_point_homogeneous[0][0][1]
     return world_point_x, world_point_y
 
+def get_numerical_jacobian(robot_id, tip_index, q_current, arm_dof_indices, delta=1e-4):
+    """
+    Calculates the Jacobian matrix manually using finite differences.
+    """
+    # Number of Degrees of Freedom (DoF) we are controlling (should be 4)
+    num_dof = len(arm_dof_indices)
+    
+    # Create an empty 3x4 matrix (3 spatial dimensions X, Y, Z by 4 joint angles)
+    J_arm = np.zeros((3, num_dof))
+    
+    # 1. Get the baseline position f(q)
+    for i, j_idx in enumerate(arm_dof_indices):
+        p.resetJointState(robot_id, j_idx, q_current[i])
+        
+    ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+    base_pos = np.array(ee_state[0])
+    
+    # 2. Perturb each joint one by one to find its effect on the end-effector
+    for i, j_idx in enumerate(arm_dof_indices):
+        # Nudge the joint by 'delta'
+        q_current[i] += delta
+        p.resetJointState(robot_id, j_idx, q_current[i])
+        
+        # Get the new position f(q + delta)
+        ee_state_new = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        new_pos = np.array(ee_state_new[0])
+        
+        # Calculate the derivative (change in position / delta)
+        # This becomes column 'i' in our Jacobian matrix
+        J_arm[:, i] = (new_pos - base_pos) / delta
+        
+        # Revert the joint to its original angle for the next loop
+        q_current[i] -= delta
+        p.resetJointState(robot_id, j_idx, q_current[i])
+        
+    return J_arm
 
+def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-3, alpha=0.5):
+    """
+    Robust Inverse Kinematics using Damped Least Squares (DLS), Numerical Jacobian,
+    and Strict Joint Limits to prevent 180-degree flips.
+    """
+    num_joints = p.getNumJoints(robot_id)
+    movable_joints = [i for i in range(num_joints) if p.getJointInfo(robot_id, i)[2] != p.JOINT_FIXED]
+            
+    arm_dof_indices = [movable_joints.index(i) for i in [0, 1, 2, 3]]
+    saved_states = [p.getJointState(robot_id, i)[0] for i in range(num_joints)]
+    
+    # Extract the current angles of the 4 arm joints
+    q = [p.getJointState(robot_id, i)[0] for i in arm_dof_indices]
+    
+    # --- NEW: Fetch joint limits from the URDF ---
+    joint_limits = []
+    for j_idx in arm_dof_indices:
+        info = p.getJointInfo(robot_id, j_idx)
+        lower_limit, upper_limit = info[8], info[9]
+        
+        # If the URDF doesn't specify limits, give it standard physical limits (-180 to 180 degrees)
+        if lower_limit == 0 and upper_limit == 0:
+            lower_limit, upper_limit = -np.pi, np.pi
+            
+        joint_limits.append((lower_limit, upper_limit))
+    
+    # Override the wrist limit (index 3) to strictly prevent it from flipping backwards.
+    # Depending on how your URDF axes are set up, you may need to change this to (-np.pi/2, 0)
+    joint_limits[3] = (-np.pi/2, 0)  # Wrist can only bend downwards, never upwards
+    
+    lambda_sq = 0.04 
+    
+    for _ in range(max_iter):
+        for i, j_idx in enumerate(arm_dof_indices):
+            p.resetJointState(robot_id, j_idx, q[i])
+            
+        ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        current_pos = np.array(ee_state[0])
+        
+        error = np.array(target_pos) - current_pos
+        if np.linalg.norm(error) < tol:
+            break
+            
+        J_arm = get_numerical_jacobian(robot_id, tip_index, q, arm_dof_indices)
+        
+        J_arm_T = J_arm.T
+        J_pinv = J_arm_T @ np.linalg.inv(J_arm @ J_arm_T + lambda_sq * np.eye(3))
+        
+        dq = alpha * (J_pinv @ error)
+        dq = np.clip(dq, -0.15, 0.15)
+        
+        for i in range(len(arm_dof_indices)):
+            q[i] += dq[i]
+            # --- NEW: Clamp the joint angle to its physical limits ---
+            q[i] = np.clip(q[i], joint_limits[i][0], joint_limits[i][1])
+
+    for i in range(num_joints):
+        p.resetJointState(robot_id, i, saved_states[i])
+        
+    return q
 
  # --- IGNORE ---
 
