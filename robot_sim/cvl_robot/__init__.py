@@ -48,40 +48,78 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
     return robot_id
 
 
-def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0):
-    """
-    Move the robot arm. base values are in degrees.
+def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=False):
 
-    Parameters:
-        robot_id (int): The unique ID of the robot.
-        base (float): Base joint angle in degrees.
-        shoulder (float): Shoulder joint angle in degrees.
-        elbow (float): Elbow joint angle in degrees.
-        wrist (float): Wrist joint angle in degrees.
+    targets = [np.deg2rad(base), np.deg2rad(shoulder), np.deg2rad(elbow), np.deg2rad(wrist)]
+    max_vel = 1.3
+    forces = 500.0 
 
-    Returns:
-        None
-    """
-    p.resetJointState(robot_id, 0, np.deg2rad(base))
-    p.resetJointState(robot_id, 1, np.deg2rad(shoulder))
-    p.resetJointState(robot_id, 2, np.deg2rad(elbow))
-    p.resetJointState(robot_id, 3, np.deg2rad(wrist))
+    for i in range(4):
+        p.setJointMotorControl2(
+            bodyUniqueId=robot_id,
+            jointIndex=i,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=targets[i],
+            force=forces,
+            maxVelocity=max_vel
+        )
 
-    for _ in range(240):  # Simulate steps for the motion
+    for _ in range(120): 
         p.stepSimulation()
-        time.sleep(1./240.)
+        time.sleep(1./120.)
+        
+        if stop_on_contact:
+            contacts_left = p.getContactPoints(bodyA=robot_id, linkIndexA=5)
+            contacts_right = p.getContactPoints(bodyA=robot_id, linkIndexA=7)
+            
+            hit = False
+            for contact in contacts_left + contacts_right:
+                if contact[2] != robot_id:
+                    hit = True
+                    break
+                    
+            if hit:
+                print("Contact detected!")
+                for i in range(4):
+                    current_angle = p.getJointState(robot_id, i)[0]
+                    p.setJointMotorControl2(
+                        bodyUniqueId=robot_id, 
+                        jointIndex=i, 
+                        controlMode=p.POSITION_CONTROL, 
+                        targetPosition=current_angle, 
+                        force=forces
+                    )
+                break
 
 def control_claw(robot_id, open_claw=True):
     GRIPPER_MIN = 0.0      # fully closed
-    GRIPPER_MAX = 0.3     # fully open (3 cm)
+    GRIPPER_MAX = 0.3     # fully open
     target = GRIPPER_MAX if open_claw else GRIPPER_MIN
-    p.resetJointState(robot_id, 5, target)  # left 
-    p.resetJointState(robot_id, 7, target)  # right 
 
-    # simulation steps
-    for _ in range(60):
+    max_vel = 0.4
+    force = 400.0
+
+    p.setJointMotorControl2(
+        bodyUniqueId=robot_id,
+        jointIndex=5,
+        controlMode=p.POSITION_CONTROL,
+        targetPosition=target,
+        force=force,
+        maxVelocity=max_vel
+    )
+    
+    p.setJointMotorControl2(
+        bodyUniqueId=robot_id,
+        jointIndex=7,
+        controlMode=p.POSITION_CONTROL,
+        targetPosition=target,
+        force=force,
+        maxVelocity=max_vel
+    )
+
+    for _ in range(120):
         p.stepSimulation()
-        time.sleep(1./240.)
+        time.sleep(1./120.)
 
 def state(robot_id):
     """
@@ -128,19 +166,23 @@ def create_lego_brick(color, position, scale=(0.6, 0.3, 0.3)):
     Returns:
         int: The unique ID of the created Lego brick.
     """
+
+    offset = (-0.016, -0.016, -0.0115)
+
     collision_shape_id = p.createCollisionShape(
         shapeType=p.GEOM_MESH,
         fileName="cvl_robot/lego.obj",
-        meshScale=scale
+        meshScale=scale,
+        collisionFramePosition=offset
     )
     visual_shape_id = p.createVisualShape(
         shapeType=p.GEOM_MESH,
         fileName="cvl_robot/lego.obj",
         meshScale=scale,
-        rgbaColor=color + [1]  # Add alpha channel
+        rgbaColor=color + [1]
     )
     brick_id = p.createMultiBody(
-        baseMass=0,
+        baseMass=0.2,
         baseCollisionShapeIndex=collision_shape_id,
         baseVisualShapeIndex=visual_shape_id,
         basePosition=position,
@@ -170,8 +212,7 @@ def move_brick_to_position(brick_id, target_position):
         # Move the brick to the target position while keeping its current orientation
         p.resetBasePositionAndOrientation(brick_id, target_position, current_orientation)
 
-        # Optional: Step simulation to visualize the change
-        for _ in range(240):  # Simulate a short period
+        for _ in range(240):
             p.stepSimulation()
             time.sleep(1.0 / 240.0)
 
@@ -242,3 +283,23 @@ def capture_image(image_width=640, image_height=480, camera_position=(2, -4, 5),
     except Exception as e:
         print(f"Error capturing and saving image: {e}")
         return None
+
+
+
+
+
+
+ # --- IGNORE ---
+
+ # --- USED IN CALIBRATION ---
+    """ cvl_robot.create_lego_brick(color=[0, 1, 0], position=( 2.0,  2.0, 0.1)) # 1. Positiv X, Positiv Y
+    time.sleep(0.5)
+    cvl_robot.create_lego_brick(color=[0, 1, 0], position=( 2.0, -2.0, 0.1)) # 2. Positiv X, Negativ Y
+    time.sleep(0.5)
+    cvl_robot.create_lego_brick(color=[0, 1, 0], position=(0, -2.0, 0.1)) # 3. Negativ X, Negativ Y
+    time.sleep(0.5)
+    cvl_robot.create_lego_brick(color=[0, 1, 0], position=(0,  2.0, 0.1)) # 4. Negativ X, Positiv Y """
+
+    """ print(f"Hittade pixlar: X={cX}, Y={cY}")
+    print(f"Beräknade världskoordinater: X={world_x:.3f}, Y={world_y:.3f}")
+    print(f"FACIT (där vi skapade biten): X=1.32, Y=-0.9") """
