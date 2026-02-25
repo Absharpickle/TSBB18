@@ -7,7 +7,7 @@ import numpy as np
 import math
 import random
 
-# --- FIND BRICKS ---
+# --- FIND BRICKS --- aaa
 
 def find_all_bricks(rgb_image):
     if rgb_image.shape[2] == 4:
