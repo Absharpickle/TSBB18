@@ -51,10 +51,10 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
 
 
 def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=False):
-
     targets = [np.deg2rad(base), np.deg2rad(shoulder), np.deg2rad(elbow), np.deg2rad(wrist)]
-    max_vel = 1.3
-    forces = 500.0 
+    max_vel = 1.3   # rad/s
+    forces = 500.0
+    sim_hz = 120
 
     for i in range(4):
         p.setJointMotorControl2(
@@ -66,9 +66,18 @@ def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=Fal
             maxVelocity=max_vel
         )
 
-    for _ in range(120): 
+    # How far does the biggest joint need to travel?
+    max_delta = max(
+        abs(targets[i] - p.getJointState(robot_id, i)[0])
+        for i in range(4)
+    )
+
+    # Steps needed = travel time × sim frequency, plus a 25% buffer to let it settle
+    sim_steps = max(120, int((max_delta / max_vel) * sim_hz * 1.25))
+
+    for _ in range(sim_steps):
         p.stepSimulation()
-        time.sleep(1./120.)
+        time.sleep(1. / sim_hz)
         
         if stop_on_contact:
             contacts_left = p.getContactPoints(bodyA=robot_id, linkIndexA=5)
@@ -94,34 +103,28 @@ def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=Fal
                 break
 
 def control_claw(robot_id, open_claw=True):
-    GRIPPER_MIN = 0.0      # fully closed
-    GRIPPER_MAX = 0.3     # fully open
+    GRIPPER_MIN = 0.0
+    GRIPPER_MAX = 0.3
     target = GRIPPER_MAX if open_claw else GRIPPER_MIN
-
     max_vel = 0.4
-    force = 400.0
+    force = 500.0
 
-    p.setJointMotorControl2(
-        bodyUniqueId=robot_id,
-        jointIndex=5,
-        controlMode=p.POSITION_CONTROL,
-        targetPosition=target,
-        force=force,
-        maxVelocity=max_vel
-    )
-    
-    p.setJointMotorControl2(
-        bodyUniqueId=robot_id,
-        jointIndex=7,
-        controlMode=p.POSITION_CONTROL,
-        targetPosition=target,
-        force=force,
-        maxVelocity=max_vel
-    )
+    for joint_idx in [5, 7]:
+        p.setJointMotorControl2(
+            bodyUniqueId=robot_id, jointIndex=joint_idx,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=target, force=force, maxVelocity=max_vel
+        )
 
-    for _ in range(120):
+    # Scale steps to actual gripper travel, same pattern as move_arm
+    current_pos = p.getJointState(robot_id, 5)[0]
+    delta = abs(target - current_pos)
+    sim_steps = max(60, int((delta / max_vel) * 120 * 1.25))
+
+    for _ in range(sim_steps):
         p.stepSimulation()
-        time.sleep(1./120.)
+        time.sleep(1. / 120.)
+
 
 def state(robot_id):
     """
@@ -344,98 +347,124 @@ def get_pixel_coordinates(image):
     cv2.destroyAllWindows()
     return coords
 
-def move_to_xyz(robot_id, target_x, target_y, target_z, stop_on_contact=False):
-    tip_index = 4
-    
-    # --- NEW: Camera Parallax Compensation ---
-    # Because the camera sees the top of the 3D Lego, the homography projects 
-    # the coordinate slightly behind the true object. We pull it radially 
-    # back towards the robot base to perfectly cancel out the illusion.
-    yaw = math.atan2(target_y, target_x)
-    pullback = 0.18  # 8 centimeters (Tune this up or down if it still misses!)
-    
-    adjusted_x = target_x - pullback * math.cos(yaw)
-    adjusted_y = target_y - pullback * math.sin(yaw)
-    
-    # We use these new adjusted coordinates for everything below!
-    target_pos = [adjusted_x, adjusted_y, target_z]
+TCP_OFFSET = [0.0, 0.0, -0.40]
+SAFE_TRANSIT_Z = 0.75
 
-    # --- DYNAMIC MOVEMENT ---
+def move_to_xyz(robot_id, target_x, target_y, target_z,
+                stop_on_contact=False, apply_parallax=False):
+    tip_index = 4
+
+    # Parallax correction only for camera-detected coordinates
+    if apply_parallax:
+        yaw = math.atan2(target_y, target_x)
+        pullback = 0.18  # 18 cm radial pullback to compensate camera perspective
+        adjusted_x = target_x - pullback * math.cos(yaw)
+        adjusted_y = target_y - pullback * math.sin(yaw)
+    else:
+        adjusted_x, adjusted_y = target_x, target_y
+
     if stop_on_contact:
+        # --- Current TCP height ---
         ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
         ee_pos, ee_orn = ee_state[4], ee_state[5]
-        
-        current_tcp, _ = p.multiplyTransforms(ee_pos, ee_orn, [0.0, 0.0, -0.40], [0,0,0,1])
+        current_tcp, _ = p.multiplyTransforms(ee_pos, ee_orn, TCP_OFFSET, [0, 0, 0, 1])
         current_z = current_tcp[2]
-        
+
+        # Seed ignored/held bodies from current gripper contacts
         ignored_ids = {robot_id}
         held_bodies = set()
-        
-        init_c_l = p.getContactPoints(bodyA=robot_id, linkIndexA=5) or ()
-        init_c_r = p.getContactPoints(bodyA=robot_id, linkIndexA=7) or ()
-        
-        for c in (init_c_l + init_c_r):
+        for c in (p.getContactPoints(bodyA=robot_id, linkIndexA=5) or ()) + \
+                 (p.getContactPoints(bodyA=robot_id, linkIndexA=7) or ()):
             if c[2] != robot_id:
                 ignored_ids.add(c[2])
                 held_bodies.add(c[2])
-                
+
         z_distance = current_z - target_z
-        num_steps = max(1, int(z_distance * 100))
-        
+        num_steps = max(1, int(abs(z_distance) * 100))
+
         for s in range(1, num_steps + 1):
             step_z = current_z - (z_distance * (s / num_steps))
-            
-            # Use the adjusted coordinates here!
+
             joint_poses = calculate_jacobian_ik(
                 robot_id, tip_index, [adjusted_x, adjusted_y, step_z]
             )
-            
             for i in range(4):
                 p.setJointMotorControl2(
                     bodyUniqueId=robot_id, jointIndex=i,
-                    controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
+                    controlMode=p.POSITION_CONTROL,
+                    targetPosition=joint_poses[i],
                     force=500.0, maxVelocity=2.0
                 )
-            
+
             for _ in range(5):
                 p.stepSimulation()
-                time.sleep(1/240)
-            
+                time.sleep(1 / 240)
+
+            # Check gripper contacts
             c_l = p.getContactPoints(bodyA=robot_id, linkIndexA=5) or ()
             c_r = p.getContactPoints(bodyA=robot_id, linkIndexA=7) or ()
+            hit = any(c[2] not in ignored_ids for c in (c_l + c_r))
 
-            hit = False
-            if any(c[2] not in ignored_ids for c in (c_l + c_r)):
-                hit = True
-                
-            for held_body in held_bodies:
-                b_contacts = p.getContactPoints(bodyA=held_body) or []
-                if any(c[2] not in ignored_ids for c in b_contacts):
-                    hit = True
-                    break
+            # Check if any held body has made a new contact
+            if not hit:
+                for held_body in held_bodies:
+                    if any(c[2] not in ignored_ids
+                           for c in (p.getContactPoints(bodyA=held_body) or [])):
+                        hit = True
+                        break
 
             if hit:
                 print(f"Contact detected at Z: {step_z:.3f}")
                 break
 
+        # Let physics settle after contact stop
         for _ in range(60):
             p.stepSimulation()
-            time.sleep(1./240.)
+            time.sleep(1 / 240)
 
-    # --- NORMAL MOVEMENT ---
     else:
-        # Use the target_pos array we created at the top!
-        joint_poses = calculate_jacobian_ik(robot_id, tip_index, target_pos)
-        
-        move_arm(robot_id, 
-                 base=np.rad2deg(joint_poses[0]), 
-                 shoulder=np.rad2deg(joint_poses[1]), 
-                 elbow=np.rad2deg(joint_poses[2]), 
-                 wrist=np.rad2deg(joint_poses[3]))
-    
-        for _ in range(240):
-            p.stepSimulation()
-            time.sleep(1./240.)
+        # --- Get current TCP position ---
+        ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        ee_pos, ee_orn = ee_state[4], ee_state[5]
+        current_tcp, _ = p.multiplyTransforms(ee_pos, ee_orn, TCP_OFFSET, [0, 0, 0, 1])
+        current_z = current_tcp[2]
+
+        # --- Phase 1: Lift straight up if below safe transit height ---
+        if current_z < SAFE_TRANSIT_Z:
+            lift_poses = calculate_jacobian_ik(
+                robot_id, tip_index,
+                [current_tcp[0], current_tcp[1], SAFE_TRANSIT_Z]
+            )
+            move_arm(robot_id,
+                     base=np.rad2deg(lift_poses[0]),
+                     shoulder=np.rad2deg(lift_poses[1]),
+                     elbow=np.rad2deg(lift_poses[2]),
+                     wrist=np.rad2deg(lift_poses[3]))
+
+        # --- Phase 2: Swing to target XY at safe transit height ---
+        xy_distance = math.sqrt((adjusted_x - current_tcp[0])**2 + (adjusted_y - current_tcp[1])**2)
+        if xy_distance > 0.01:  # Only swing if XY meaningfully differs
+            transit_z = max(target_z, SAFE_TRANSIT_Z)
+            swing_poses = calculate_jacobian_ik(
+                robot_id, tip_index, [adjusted_x, adjusted_y, transit_z]
+            )
+            move_arm(robot_id,
+                    base=np.rad2deg(swing_poses[0]),
+                    shoulder=np.rad2deg(swing_poses[1]),
+                    elbow=np.rad2deg(swing_poses[2]),
+                    wrist=np.rad2deg(swing_poses[3]))
+
+
+        # --- Phase 3: Descend to actual target Z if below transit height ---
+        if target_z < SAFE_TRANSIT_Z:
+            descent_poses = calculate_jacobian_ik(
+                robot_id, tip_index, [adjusted_x, adjusted_y, target_z]
+            )
+            move_arm(robot_id,
+                     base=np.rad2deg(descent_poses[0]),
+                     shoulder=np.rad2deg(descent_poses[1]),
+                     elbow=np.rad2deg(descent_poses[2]),
+                     wrist=np.rad2deg(descent_poses[3]))
 
 def spawn_random_legos():
     
@@ -500,23 +529,18 @@ def drop_lego_brick(robot_id, storage_x, storage_y):
     control_claw(robot_id, open_claw=True)
     
     # Move back up slightly after dropping to avoid knocking the stack over
-    move_to_xyz(robot_id, storage_x, storage_y, target_z=0.60)
-    
-    for _ in range(120):
-        p.stepSimulation()
-        time.sleep(1./120.)
+    move_to_xyz(robot_id, storage_x, storage_y, target_z=SAFE_TRANSIT_Z)
 
 def pick_up_lego(robot_id, target_x, target_y):
-    
     control_claw(robot_id, open_claw=True)
-    move_to_xyz(robot_id, target_x, target_y, target_z=0.60)
-    move_to_xyz(robot_id, target_x, target_y, target_z=0.05, stop_on_contact=True) 
+    move_to_xyz(robot_id, target_x, target_y, target_z=0.60, apply_parallax=True)
+    move_to_xyz(robot_id, target_x, target_y, target_z=0.05,
+                stop_on_contact=True, apply_parallax=True)
     control_claw(robot_id, open_claw=False)
-
     for _ in range(120):
         p.stepSimulation()
-        time.sleep(1./120.)
-                
+        time.sleep(1. / 120.)
+         
 def standard_pose(robot_id):
     print("Lifting arm to upright position")
     
@@ -608,15 +632,13 @@ def get_numerical_jacobian(robot_id, tip_index, q_current, arm_dof_indices, tcp_
 
 def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-3, alpha=0.5):
     num_joints = p.getNumJoints(robot_id)
-
-    # Explicit joint indices — no fragile .index() trick
     arm_dof_indices = [0, 1, 2, 3]
 
     # Save full simulation state so IK solve doesn't pollute the world
     saved_states = [p.getJointState(robot_id, i)[0] for i in range(num_joints)]
 
-    # Seed from current arm pose
-    q = [p.getJointState(robot_id, j)[0] for j in arm_dof_indices]
+    # Seed from preferred elbow-down posture — ensures consistent solution branch
+    q = [1.0, -1.5, 1.8, 1.0] # Adjust this if arm flips
 
     # Joint limits read from URDF, with manual overrides where needed
     joint_limits = []
@@ -629,11 +651,9 @@ def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-
     joint_limits[1] = (-1.4,  1.4)   # Shoulder
     joint_limits[2] = (-2.6,  2.6)   # Elbow
 
-    tcp_offset = [0.0, 0.0, -0.40]   # Wrist joint → claw tip (metres)
+    tcp_offset = TCP_OFFSET
 
     for _ in range(max_iter):
-
-        # --- Forward kinematics: current TCP position ---
         for i, j_idx in enumerate(arm_dof_indices):
             p.resetJointState(robot_id, j_idx, q[i])
 
@@ -642,33 +662,32 @@ def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-
         current_pos, _ = p.multiplyTransforms(ee_pos, ee_orn, tcp_offset, [0, 0, 0, 1])
         current_pos = np.array(current_pos)
 
-        # --- Error ---
         error = np.array(target_pos) - current_pos
-        if np.linalg.norm(error) < tol:
+        error_norm = np.linalg.norm(error)
+        if error_norm < tol:
             break
 
-        # --- Numerical Jacobian (central differences, q not mutated) ---
         J = get_numerical_jacobian(robot_id, tip_index, q, arm_dof_indices, tcp_offset)
 
-        # --- Variable damping: increase λ near singularities ---
+        # Variable damping: increase λ near singularities
         manipulability = np.sqrt(max(0.0, np.linalg.det(J @ J.T)))
         lambda_sq = 0.04 if manipulability > 0.01 else 0.1
 
-        # --- Damped Least Squares (DLS) pseudoinverse ---
+        # Damped Least Squares pseudoinverse
         J_pinv = J.T @ np.linalg.inv(J @ J.T + lambda_sq * np.eye(3))
 
-        # --- Joint update with step-size cap ---
-        dq = alpha * (J_pinv @ error)
-        dq = np.clip(dq, -0.15, 0.15)
+        dq = np.clip(alpha * (J_pinv @ error), -0.15, 0.15)
 
         for i in range(len(arm_dof_indices)):
             q[i] = np.clip(q[i] + dq[i], joint_limits[i][0], joint_limits[i][1])
 
-    # --- Restore simulation state before returning ---
+    # Restore simulation state before returning
     for i in range(num_joints):
         p.resetJointState(robot_id, i, saved_states[i])
 
     return q
+
+
 
 
  # --- IGNORE ---

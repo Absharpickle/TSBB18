@@ -38,16 +38,12 @@ def main():
 
         pick_up_lego(robot_id, world_x, world_y)
 
-        standard_pose(robot_id)
-
         lager_x = 1.8
         lager_y = 0.0
 
         offset_y = lager_y + index * 0.15
 
         drop_lego_brick(robot_id, lager_x, offset_y)
-
-        standard_pose(robot_id)
 
     while(True):
         p.stepSimulation()
