@@ -313,6 +313,8 @@ def find_all_bricks(rgb_image):
             mask = cv2.inRange(hsv_image, np.array(lower), np.array(upper))
             color_mask = cv2.bitwise_or(color_mask, mask)
 
+        color_mask = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
         contours, _ = cv2.findContours(color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for contour in contours:
@@ -638,7 +640,10 @@ def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-
     saved_states = [p.getJointState(robot_id, i)[0] for i in range(num_joints)]
 
     # Seed from preferred elbow-down posture — ensures consistent solution branch
-    q = [1.0, -1.5, 1.8, 1.0] # Adjust this if arm flips
+    seed = math.atan2(target_pos[1], target_pos[0])
+    base_seed = seed * 0.5
+    wrist_seed = seed * -0.5
+    q = [base_seed, 1.0, 1.8, wrist_seed] # Adjust this if arm flips
 
     # Joint limits read from URDF, with manual overrides where needed
     joint_limits = []

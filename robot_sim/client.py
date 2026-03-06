@@ -10,6 +10,13 @@ from cvl_robot import *
 import rustypot
 
 
+DROP_ZONES = {
+    "Red":      (1.8, 1.5),
+    "Green":    (1.8, 0.5),
+    "Blue":     (1.8, -0.5),
+    "Yellow":   (1.8, -1.5)
+}
+
 # --- MAIN FUNCTION ---
 
 def main():
@@ -32,18 +39,23 @@ def main():
 
     pixel_coords = find_all_bricks(rgb_image)
 
+    drop_counts = {"Red": 0, "Green": 0, "Blue": 0, "Yellow": 0}
+
     for index, (cX, cY, color) in enumerate(pixel_coords):
 
         world_x, world_y = pixel_to_world_coordinates(cX, cY)
 
         pick_up_lego(robot_id, world_x, world_y)
 
-        lager_x = 1.8
-        lager_y = 0.0
+        if color not in DROP_ZONES:
+            color = "Red"   # Fallback
 
-        offset_y = lager_y + index * 0.15
+        zone_x, zone_y = DROP_ZONES[color]
+        offset_y = zone_y + drop_counts[color] * 0.15
 
-        drop_lego_brick(robot_id, lager_x, offset_y)
+        drop_lego_brick(robot_id, zone_x, offset_y)
+
+        drop_counts[color] += 1
 
     while(True):
         p.stepSimulation()
