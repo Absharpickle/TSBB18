@@ -577,94 +577,99 @@ def pixel_to_world_coordinates(cX, cY):
 def get_numerical_jacobian(robot_id, tip_index, q_current, arm_dof_indices, tcp_offset, delta=1e-4):
     num_dof = len(arm_dof_indices)
     J_arm = np.zeros((3, num_dof))
-    
+
+    # Work on a copy so the caller's q is never mutated
+    q = list(q_current)
+
     for i, j_idx in enumerate(arm_dof_indices):
-        p.resetJointState(robot_id, j_idx, q_current[i])
-        
-    ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
-    # FIX: Use indices 4 and 5 for the true URDF joint origin!
-    ee_pos, ee_orn = ee_state[4], ee_state[5]
-    
-    base_pos, _ = p.multiplyTransforms(ee_pos, ee_orn, tcp_offset, [0,0,0,1])
-    base_pos = np.array(base_pos)
-    
-    for i, j_idx in enumerate(arm_dof_indices):
-        q_current[i] += delta
-        p.resetJointState(robot_id, j_idx, q_current[i])
-        
-        ee_state_new = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
-        ee_pos_new, ee_orn_new = ee_state_new[4], ee_state_new[5]
-        
-        new_pos, _ = p.multiplyTransforms(ee_pos_new, ee_orn_new, tcp_offset, [0,0,0,1])
-        new_pos = np.array(new_pos)
-        
-        J_arm[:, i] = (new_pos - base_pos) / delta
-        
-        q_current[i] -= delta
-        p.resetJointState(robot_id, j_idx, q_current[i])
-        
+
+        # --- Forward perturbation ---
+        q[i] += delta
+        p.resetJointState(robot_id, j_idx, q[i])
+        ee_fwd = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        pos_fwd, orn_fwd = ee_fwd[4], ee_fwd[5]
+        tcp_fwd, _ = p.multiplyTransforms(pos_fwd, orn_fwd, tcp_offset, [0, 0, 0, 1])
+
+        # --- Backward perturbation ---
+        q[i] -= 2 * delta
+        p.resetJointState(robot_id, j_idx, q[i])
+        ee_bwd = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        pos_bwd, orn_bwd = ee_bwd[4], ee_bwd[5]
+        tcp_bwd, _ = p.multiplyTransforms(pos_bwd, orn_bwd, tcp_offset, [0, 0, 0, 1])
+
+        # --- Central difference ---
+        J_arm[:, i] = (np.array(tcp_fwd) - np.array(tcp_bwd)) / (2 * delta)
+
+        # --- Restore ---
+        q[i] += delta
+        p.resetJointState(robot_id, j_idx, q[i])
+
     return J_arm
 
 def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-3, alpha=0.5):
     num_joints = p.getNumJoints(robot_id)
-    movable_joints = [i for i in range(num_joints) if p.getJointInfo(robot_id, i)[2] != p.JOINT_FIXED]
-    arm_dof_indices = [movable_joints.index(i) for i in [0, 1, 2, 3]]
+
+    # Explicit joint indices — no fragile .index() trick
+    arm_dof_indices = [0, 1, 2, 3]
+
+    # Save full simulation state so IK solve doesn't pollute the world
     saved_states = [p.getJointState(robot_id, i)[0] for i in range(num_joints)]
-    q = [p.getJointState(robot_id, i)[0] for i in arm_dof_indices]
-    
-    # --- PHYSICAL LIMITS (Wrist is completely free!) ---
+
+    # Seed from current arm pose
+    q = [p.getJointState(robot_id, j)[0] for j in arm_dof_indices]
+
+    # Joint limits read from URDF, with manual overrides where needed
     joint_limits = []
     for j_idx in arm_dof_indices:
         info = p.getJointInfo(robot_id, j_idx)
-        lower_limit, upper_limit = info[8], info[9]
-        if lower_limit == 0 and upper_limit == 0:
-            lower_limit, upper_limit = -np.pi, np.pi
-        joint_limits.append((lower_limit, upper_limit))
-        
-    joint_limits[1] = (-1.4, 1.4)  # Shoulder limits
-    joint_limits[2] = (-2.6, 2.6)  # Elbow limits
-    # Wrist limits completely removed (it uses the URDF default bounds)
-    
-    # --- TCP OFFSET ---
-    # This represents the distance from the wrist joint to the middle of the claws.
-    # Depending on your URDF, you may need to tweak the Z value (or move it to X/Y).
-    # In the middle of calculate_jacobian_ik...
-    
-    # Set this to the true physical claw length
-    tcp_offset = [0.0, 0.0, -0.40] 
-    lambda_sq = 0.04 
-    
+        lower, upper = info[8], info[9]
+        if lower == 0 and upper == 0:
+            lower, upper = -np.pi, np.pi
+        joint_limits.append((lower, upper))
+    joint_limits[1] = (-1.4,  1.4)   # Shoulder
+    joint_limits[2] = (-2.6,  2.6)   # Elbow
+
+    tcp_offset = [0.0, 0.0, -0.40]   # Wrist joint → claw tip (metres)
+
     for _ in range(max_iter):
+
+        # --- Forward kinematics: current TCP position ---
         for i, j_idx in enumerate(arm_dof_indices):
             p.resetJointState(robot_id, j_idx, q[i])
-            
+
         ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
-        # FIX: Use indices 4 and 5
         ee_pos, ee_orn = ee_state[4], ee_state[5]
-        
-        current_pos, _ = p.multiplyTransforms(ee_pos, ee_orn, tcp_offset, [0,0,0,1])
+        current_pos, _ = p.multiplyTransforms(ee_pos, ee_orn, tcp_offset, [0, 0, 0, 1])
         current_pos = np.array(current_pos)
-        
+
+        # --- Error ---
         error = np.array(target_pos) - current_pos
         if np.linalg.norm(error) < tol:
             break
-            
-        J_arm = get_numerical_jacobian(robot_id, tip_index, q, arm_dof_indices, tcp_offset)
-        
-        J_arm_T = J_arm.T
-        J_pinv = J_arm_T @ np.linalg.inv(J_arm @ J_arm_T + lambda_sq * np.eye(3))
-        
+
+        # --- Numerical Jacobian (central differences, q not mutated) ---
+        J = get_numerical_jacobian(robot_id, tip_index, q, arm_dof_indices, tcp_offset)
+
+        # --- Variable damping: increase λ near singularities ---
+        manipulability = np.sqrt(max(0.0, np.linalg.det(J @ J.T)))
+        lambda_sq = 0.04 if manipulability > 0.01 else 0.1
+
+        # --- Damped Least Squares (DLS) pseudoinverse ---
+        J_pinv = J.T @ np.linalg.inv(J @ J.T + lambda_sq * np.eye(3))
+
+        # --- Joint update with step-size cap ---
         dq = alpha * (J_pinv @ error)
         dq = np.clip(dq, -0.15, 0.15)
-        
-        for i in range(len(arm_dof_indices)):
-            q[i] += dq[i]
-            q[i] = np.clip(q[i], joint_limits[i][0], joint_limits[i][1])
 
+        for i in range(len(arm_dof_indices)):
+            q[i] = np.clip(q[i] + dq[i], joint_limits[i][0], joint_limits[i][1])
+
+    # --- Restore simulation state before returning ---
     for i in range(num_joints):
         p.resetJointState(robot_id, i, saved_states[i])
-        
+
     return q
+
 
  # --- IGNORE ---
 

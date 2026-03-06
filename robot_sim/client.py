@@ -7,6 +7,7 @@ import numpy as np
 import math
 import random
 from cvl_robot import *
+import rustypot
 
 
 # --- MAIN FUNCTION ---
