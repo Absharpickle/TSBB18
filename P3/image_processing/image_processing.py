@@ -16,8 +16,8 @@ CHANNELS      = 4  # BGRA — XRGB8888 from PiCamera2
 SENDER_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "image_sender.py")
 SYSTEM_PYTHON = "/usr/bin/python3"
 
-# --- HSV COLOR RANGES (tune per your lighting conditions) ---
-COLOR_RANGES = {
+# --- HSV COLOR RANGES ---
+COLOR_RANGES = {    # needs tuning
     "Red": [
         (np.array([0,   120,  50]), np.array([10,  255, 255])),
         (np.array([170, 120,  50]), np.array([180, 255, 255]))
@@ -28,9 +28,8 @@ COLOR_RANGES = {
 }
 
 # --- HOMOGRAPHY ---
-# Calibrate these 4 image↔world point pairs to your real camera setup
 _IMAGE_POINTS = np.array([
-    [317, 150],
+    [317, 150],     # needs tuning
     [316, 364],
     [150, 366],
     [207, 150]
