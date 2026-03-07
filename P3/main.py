@@ -41,9 +41,9 @@ def main():
 
     finally:
         stop_camera()
-        home_arm(arm)
-        relax_arm(port=PORT)
-        print("Done — arm relaxed, camera stopped.")
+        home_arm()
+        # relax_arm(port=PORT)
+        print("Done — camera stopped.")
 
 
 if __name__ == "__main__":
