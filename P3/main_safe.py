@@ -1,9 +1,6 @@
 import json
 import os
 import sys
-import tty
-import termios
-termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
 import numpy as np
 import cv2
 from rustypot import Sts3215PyController
@@ -38,23 +35,6 @@ def pixel_to_world(px, py, H):
     pt = np.array([[[px, py]]], dtype=np.float32)
     world = cv2.perspectiveTransform(pt, H)
     return float(world[0][0][0]), float(world[0][0][1])
-    
-def wait_for_key():
-    fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    
-    try:
-        tty.setraw(fd)
-        return sys.stdin.read(1)
-    
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        
-def check_quit():
-    import select
-    if select.select([sys.stdin], [], [], 0.0)[0]:
-        return wait_for_key() == 'q'
-    return False
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 print("=" * 50)
@@ -72,17 +52,8 @@ try:
     bricks = detect_bricks()
     print(f"Detected {len(bricks)} brick(s).")
     
-    termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
-    
-    key = wait_for_key()
-    if key == 'q':
-        bricks = []
-        
-    termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
 
     for brick in bricks:
-        if check_quit():
-            break
             
         color = brick["color"]
         px, py = brick["pixel"]
@@ -96,7 +67,6 @@ try:
         drop_lego(arm, drop_x, drop_y)
 
 finally:
-    cv2.destroyAllWindows()
     stop_camera()
     home_arm(arm)
     print("\nDone.")
