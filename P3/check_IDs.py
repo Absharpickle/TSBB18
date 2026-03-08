@@ -1,7 +1,7 @@
 from rustypot import Sts3215PyController
-from setup import forward_kinematics, relax_arm, PORT, BAUDRATE
+from setup import relax_arm, forward_kinematics
 
-def scan_servos(port=PORT, baudrate=BAUDRATE, max_id=20):
+def scan_servos(port='/dev/ttyUSB0', baudrate=1_000_000, max_id=20):
     print(f"Scanning for servos on {port}...")
 
     try:
@@ -15,7 +15,7 @@ def scan_servos(port=PORT, baudrate=BAUDRATE, max_id=20):
     for servo_id in range(1, max_id + 1):
         try:
             pos = controller.read_present_position(servo_id)
-            print(f"[+] Found servo ID {servo_id} | Position: {pos:.4f} rad")
+            print(f"[+] Found active servo at ID {servo_id} | Current position: {pos}")
             found_ids.append(servo_id)
         except Exception:
             pass
@@ -36,6 +36,5 @@ def scan_servos(port=PORT, baudrate=BAUDRATE, max_id=20):
         print("No servos found.")
 
 if __name__ == "__main__":
-    scan_servos()
-    input("Press Enter to relax arm, then move claw to table surface and run again...")
+    scan_servos(port='/dev/ttyUSB0')
     relax_arm()
