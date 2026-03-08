@@ -1,6 +1,8 @@
 import json
 import os
 import sys
+import tty
+import termios
 import numpy as np
 import cv2
 from rustypot import Sts3215PyController
@@ -35,6 +37,23 @@ def pixel_to_world(px, py, H):
     pt = np.array([[[px, py]]], dtype=np.float32)
     world = cv2.perspectiveTransform(pt, H)
     return float(world[0][0][0]), float(world[0][0][1])
+    
+def wait_for_key():
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    
+    try:
+        tty.setraw(fd)
+        return sys.stdin.read(1)
+    
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        
+def check_quit():
+    import select
+    if select.select([sys.stdin], [], [], 0.0)[0]:
+        return wait_for_key() == 'q'
+    return False
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 print("=" * 50)
@@ -46,16 +65,18 @@ H = load_homography()
 arm = Sts3215PyController(serial_port=PORT, baudrate=BAUDRATE, timeout=0.2)
 arm_limits()
 home_arm(arm)
-cv2.namedWindow("Live Feed")
 start_camera()
 
 try:
     bricks = detect_bricks()
     print(f"Detected {len(bricks)} brick(s).")
+    
+    key = wait_for_key()
+    if key == 'q':
+        bricks = []
 
     for brick in bricks:
-        cv2.imshow("Live Feed, get_frame()")
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if check_quit():
             break
             
         color = brick["color"]
