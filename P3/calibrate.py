@@ -11,8 +11,10 @@ CALIBRATION_FILE = "/home/marjoe/TSBB18/P3/homography.json"
 # Place 4 bricks at these exact positions on the table (metres)
 WORLD_POINTS = [
     [1.0,  2.0],   # brick 1
+    [0.0, 2.0],
     [-1.0, 2.0],   # brick 2
     [-1.0, 3.0],   # brick 3
+    [0.0, 3.0],
     [2.0,  3.0],   # brick 4
 ]
 
@@ -20,7 +22,7 @@ WORLD_POINTS = [
 _clicked = []
 
 def _on_click(event, x, y, flags, param):
-    if event == cv2.EVENT_LBUTTONDOWN and len(_clicked) < 4:
+    if event == cv2.EVENT_LBUTTONDOWN and len(_clicked) < len(WORLD_POINTS):
         _clicked.append([x, y])
         print(f"  Point {len(_clicked)}: pixel ({x}, {y})  "
               f"→ world {WORLD_POINTS[len(_clicked) - 1]}")
@@ -54,8 +56,8 @@ def main():
             # Status overlay
             if saved:
                 status, color = "Saved! Press 'q' to close.", (0, 255, 0)
-            elif len(_clicked) < 4:
-                status, color = f"Click brick {len(_clicked) + 1} of 4", (0, 200, 255)
+            elif len(_clicked) < len(WORLD_POINTS):
+                status, color = f"Click brick {len(_clicked) + 1} of {len(WORLD_POINTS)}", (0, 200, 255)
             else:
                 status, color = "All 4 clicked — saving...", (0, 200, 255)
             cv2.putText(display, status, (20, 40),
@@ -74,7 +76,7 @@ def main():
                     print("Quit — no calibration saved.")
                 break
 
-            elif len(_clicked) == 4 and not saved:
+            elif len(_clicked) == len(WORLD_POINTS) and not saved:
                 image_pts = np.array(_clicked,     dtype=np.float32)
                 world_pts = np.array(WORLD_POINTS, dtype=np.float32)
                 H, _ = cv2.findHomography(image_pts, world_pts)

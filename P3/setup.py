@@ -9,14 +9,14 @@ PORT     = "/dev/ttyUSB0"
 BAUDRATE = 1_000_000
 
 SAFE_TRANSIT_Z    = 0.75
-FLOOR_Z           = 0.3694
-PARALLAX_PULLBACK = 0.18
+FLOOR_Z           = 0.02
+PARALLAX_PULLBACK = 0.35
 
 ARM_SERVO_IDS = [1, 2, 3, 4]
 ALL_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 CLAW_ID       = 6
-CLAW_OPEN     =  0.5
-CLAW_CLOSED   = -0.5
+CLAW_OPEN     = -0.5
+CLAW_CLOSED   = 0.5
 MAX_VEL       = 0.5
 
 DROP_ZONES = {
@@ -28,10 +28,10 @@ DROP_ZONES = {
 
 # ─── FORWARD KINEMATICS ───────────────────────────────────────────────────────
 
-L1 = 0.063
-L2 = 0.103
-L3 = 0.103
-L4 = 0.143
+L1 = 0.063 * 10
+L2 = 0.103 * 10
+L3 = 0.103 * 10
+L4 = 0.143 * 10
 
 def forward_kinematics(q):
     base, shoulder, elbow, wrist = q
@@ -43,8 +43,8 @@ def forward_kinematics(q):
     horizontal = (L2 * math.sin(shoulder)
                 + L3 * math.sin(shoulder + elbow)
                 + L4 * math.sin(shoulder + elbow + wrist))
-    x = horizontal * math.cos(base)
-    y = horizontal * math.sin(base)
+    y = horizontal * math.cos(base)
+    x = horizontal * math.sin(base)
     z = L1 + vertical
     return np.array([x, y, z])
 
@@ -141,8 +141,8 @@ def move_to_xyz(arm, target_x, target_y, target_z, apply_parallax=False):
 
 def pick_up_lego(arm, world_x, world_y):
     open_claw(arm)
-    move_to_xyz(arm, world_x, world_y, target_z=0.60, apply_parallax=True)
-    move_to_xyz(arm, world_x, world_y, target_z=FLOOR_Z, apply_parallax=True)
+    move_to_xyz(arm, world_x, world_y, target_z=0.60)
+    move_to_xyz(arm, world_x, world_y, target_z=FLOOR_Z)
     close_claw(arm)
     time.sleep(0.5)
 
