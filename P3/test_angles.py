@@ -7,7 +7,7 @@ def set_arm(port='/dev/ttyUSB0', baudrate=1_000_000):
 	# Base, Shoulder, Elbow, Wrist, Twist, Claw
 	servo_ids = [1, 2, 3, 4, 5, 6]
 	
-	target_pos = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	target_pos = [0.0, 0.0, 0.0, 0.0, 0.0, 0.65]
 	
 	try:
 		print(f"Connecting to servos on {port}")

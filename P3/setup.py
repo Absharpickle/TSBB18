@@ -9,14 +9,20 @@ PORT     = "/dev/ttyUSB0"
 BAUDRATE = 1_000_000
 
 SAFE_TRANSIT_Z    = 0.75
-FLOOR_Z           = 0.02
-PARALLAX_PULLBACK = 0.35
+FLOOR_Z_Y_MAX     = 0.35
+FLOOR_Z_Y_MIN     = 0.15
+PARALLAX_PULLBACK = -0.1
+
+Y_MIN = 2.0
+Y_MAX = 3.0
+X_MIN = -1.0
+X_MAX = 1.0
 
 ARM_SERVO_IDS = [1, 2, 3, 4]
 ALL_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 CLAW_ID       = 6
-CLAW_OPEN     = -0.5
-CLAW_CLOSED   = 0.5
+CLAW_OPEN     = -0.4
+CLAW_CLOSED   = 0.6
 MAX_VEL       = 0.5
 
 DROP_ZONES = {
@@ -87,6 +93,12 @@ def calculate_jacobian_ik(target_pos, max_iter=500, tol=1e-3, alpha=0.5):
 
     return q
 
+# ─── HELPING FUNCTIONS ────────────────────────────────────────────────────────
+
+def get_floor_z(world_y):
+    t = (world_y - Y_MIN) / (Y_MAX - Y_MIN)
+    t = max(0.0, min(1.0, t))
+    return FLOOR_Z_Y_MIN + t * (FLOOR_Z_Y_MAX-FLOOR_Z_Y_MIN)
 # ─── ARM CONTROL ──────────────────────────────────────────────────────────────
 
 current_q = [0.0, 1.0, 1.8, 0.0]
@@ -141,15 +153,15 @@ def move_to_xyz(arm, target_x, target_y, target_z, apply_parallax=False):
 
 def pick_up_lego(arm, world_x, world_y):
     open_claw(arm)
-    move_to_xyz(arm, world_x, world_y, target_z=0.60)
-    move_to_xyz(arm, world_x, world_y, target_z=FLOOR_Z)
+    floor_z = get_floor_z(world_y)
+    #move_to_xyz(arm, world_x, world_y, target_z=0.60, apply_parallax=True)
+    move_to_xyz(arm, world_x, world_y, target_z=floor_z, apply_parallax=True)
     close_claw(arm)
-    time.sleep(0.5)
 
 
 def drop_lego(arm, storage_x, storage_y):
     move_to_xyz(arm, storage_x, storage_y, target_z=0.80)
-    move_to_xyz(arm, storage_x, storage_y, target_z=FLOOR_Z)
+    move_to_xyz(arm, storage_x, storage_y, target_z=0.3)
     open_claw(arm)
     move_to_xyz(arm, storage_x, storage_y, target_z=SAFE_TRANSIT_Z)
 
