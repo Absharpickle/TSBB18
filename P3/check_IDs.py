@@ -25,7 +25,7 @@ def scan_servos(port='/dev/ttyUSB0', baudrate=1_000_000, max_id=20):
         print(f"Found {len(found_ids)} servos. Active IDs: {found_ids}")
 
         if all(i in found_ids for i in [1, 2, 3, 4]):
-            angles = [controller.read_present_position(i) for i in [1, 2, 3, 4]]
+            angles = [controller.read_present_position(i)[0] for i in [1, 2, 3, 4]]
             tcp = forward_kinematics(angles)
             print(f"\n--- TCP Position ---")
             print(f"  Angles : {[f'{a:.4f}' for a in angles]}")

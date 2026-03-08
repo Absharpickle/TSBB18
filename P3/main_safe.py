@@ -8,7 +8,7 @@ import setup
 from image_processing.image_processing import start_camera, stop_camera, detect_bricks, get_frame
 
 HOMOGRAPHY_FILE = "/home/marjoe/TSBB18/P3/homography.json"
-ANGLE_SCALE = 0.25
+ANGLE_SCALE = 0.75
 
 # ─── SAFETY WRAPPER ───────────────────────────────────────────────────────────
 _original_move_arm_physical = setup.move_arm_physical
@@ -69,4 +69,5 @@ try:
 finally:
     stop_camera()
     home_arm(arm)
+    relax_arm(arm)
     print("\nDone.")

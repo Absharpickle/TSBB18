@@ -9,7 +9,7 @@ PORT     = "/dev/ttyUSB0"
 BAUDRATE = 1_000_000
 
 SAFE_TRANSIT_Z    = 0.75
-FLOOR_Z           = 0.12
+FLOOR_Z           = 0.3694
 PARALLAX_PULLBACK = 0.18
 
 ARM_SERVO_IDS = [1, 2, 3, 4]
@@ -17,7 +17,7 @@ ALL_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 CLAW_ID       = 6
 CLAW_OPEN     =  0.5
 CLAW_CLOSED   = -0.5
-MAX_VEL       = 1.3
+MAX_VEL       = 0.5
 
 DROP_ZONES = {
     "Red":    (1.8,  1.5),
@@ -28,13 +28,15 @@ DROP_ZONES = {
 
 # ─── FORWARD KINEMATICS ───────────────────────────────────────────────────────
 
-L1 = 0.211
-L2 = 1.11
-L3 = 1.0
-L4 = 0.40
+L1 = 0.063
+L2 = 0.103
+L3 = 0.103
+L4 = 0.143
 
 def forward_kinematics(q):
     base, shoulder, elbow, wrist = q
+    shoulder = -shoulder
+    wrist = -wrist
     vertical   = (L2 * math.cos(shoulder)
                 + L3 * math.cos(shoulder + elbow)
                 + L4 * math.cos(shoulder + elbow + wrist))
