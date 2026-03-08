@@ -1,0 +1,48 @@
+(cv) marjoe@raspberrypi:~/TSBB18/P3 $ python main_safe.py
+==================================================
+  SAFE MODE — angles scaled to 1/4
+==================================================
+Error configuring arm: Device or resource busy
+Returning to home position...
+[SAFE MODE] Original: ['0.000', '0.111', '1.846', '0.103']
+[SAFE MODE] Scaled:   ['0.000', '0.028', '0.461', '0.026']
+[SAFE MODE] Original: ['0.000', '0.000', '0.000', '0.000']
+[SAFE MODE] Scaled:   ['0.000', '0.000', '0.000', '0.000']
+Home position reached.
+Launching Camera Sender...
+Initializing Camera...
+[1:33:52.319763060] [3766]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[1:33:52.369654448] [3769]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx219.json
+[1:33:52.380189857] [3769]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@1/imx219@10' for pipeline handler rpi/vc4
+[1:33:52.380399466] [3769]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@1/imx219@10 to Unicam device /dev/media1 and ISP device /dev/media2
+[1:33:52.380492613] [3769]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+[1:33:52.389314077] [3766]  INFO Camera camera.cpp:1215 configuring streams: (0) 1280x720-XRGB8888/sRGB (1) 1920x1080-SBGGR10_CSI2P/RAW
+[1:33:52.389809794] [3769]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@1/imx219@10 - Selected sensor format: 1920x1080-SBGGR10_1X10/RAW - Selected unicam format: 1920x1080-pBAA/RAW
+Shared Memory 'camera_shm_hd' ready.
+Broadcasting...
+Connected to shared memory.
+Detected 5 brick(s).
+Camera stopped.
+Returning to home position...
+
+Signal 15 received. Stopping loop...
+Cleaning up resources...
+[SAFE MODE] Original: ['0.000', '0.000', '0.000', '0.000']
+[SAFE MODE] Scaled:   ['0.000', '0.000', '0.000', '0.000']
+Shared memory unlinked.
+Sender Stopped.
+Traceback (most recent call last):
+  File "/home/marjoe/miniconda3/envs/cv/lib/python3.11/multiprocessing/resource_tracker.py", line 239, in main
+    cache[rtype].remove(name)
+KeyError: 'camera_shm_hd'
+Home position reached.
+
+Done.
+Traceback (most recent call last):
+  File "/home/marjoe/TSBB18/P3/main_safe.py", line 57, in <module>
+    cv2.imshow("Live Feed, get_frame()")
+cv2.error: OpenCV(4.13.0) :-1: error: (-5:Bad argument) in function 'imshow'
+> Overload resolution failed:
+>  - imshow() missing required argument 'mat' (pos 2)
+>  - imshow() missing required argument 'mat' (pos 2)
+>  - imshow() missing required argument 'mat' (pos 2)

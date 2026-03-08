@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 from rustypot import Sts3215PyController
 import setup
-from image_processing.image_processing import start_camera, stop_camera, detect_bricks
+from image_processing.image_processing import start_camera, stop_camera, detect_bricks, get_frame
 
 HOMOGRAPHY_FILE = "/home/marjoe/TSBB18/P3/homography.json"
 ANGLE_SCALE = 0.25
@@ -46,6 +46,7 @@ H = load_homography()
 arm = Sts3215PyController(serial_port=PORT, baudrate=BAUDRATE, timeout=0.2)
 arm_limits()
 home_arm(arm)
+cv2.namedWindow("Live Feed")
 start_camera()
 
 try:
@@ -53,6 +54,10 @@ try:
     print(f"Detected {len(bricks)} brick(s).")
 
     for brick in bricks:
+        cv2.imshow("Live Feed, get_frame()")
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+            
         color = brick["color"]
         px, py = brick["pixel"]
         world_x, world_y = pixel_to_world(px, py, H)
@@ -65,6 +70,7 @@ try:
         drop_lego(arm, drop_x, drop_y)
 
 finally:
+    cv2.destroyAllWindows()
     stop_camera()
     home_arm(arm)
     print("\nDone.")
