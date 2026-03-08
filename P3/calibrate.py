@@ -3,10 +3,10 @@ import json
 import sys
 import numpy as np
 import cv2
-from image_processing import start_camera, stop_camera, get_frame
+from image_processing.image_processing import start_camera, stop_camera, get_frame
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
-CALIBRATION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "homography.json")
+CALIBRATION_FILE = "/home/marjoe/TSBB18/P3/homography.json"
 
 # Place 4 bricks at these exact positions on the table (metres)
 WORLD_POINTS = [

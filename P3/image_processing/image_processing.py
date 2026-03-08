@@ -10,7 +10,7 @@ import cv2
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SHM_NAME      = "camera_shm_hd"
 WIDTH, HEIGHT, CHANNELS = 1280, 720, 4
-SENDER_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "image_sender.py")
+SENDER_PATH   = "/home/marjoe/TSBB18/P3/image_processing/image_sender.py"
 SYSTEM_PYTHON = "/usr/bin/python3"
 
 COLOR_RANGES = {
