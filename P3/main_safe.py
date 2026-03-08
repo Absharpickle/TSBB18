@@ -3,6 +3,7 @@ import os
 import sys
 import tty
 import termios
+termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
 import numpy as np
 import cv2
 from rustypot import Sts3215PyController
@@ -71,9 +72,13 @@ try:
     bricks = detect_bricks()
     print(f"Detected {len(bricks)} brick(s).")
     
+    termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+    
     key = wait_for_key()
     if key == 'q':
         bricks = []
+        
+    termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
 
     for brick in bricks:
         if check_quit():
