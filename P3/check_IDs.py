@@ -1,4 +1,5 @@
 from rustypot import Sts3215PyController
+from setup import relax_arm, forward_kinematics
 
 def scan_servos(port='/dev/ttyUSB0', baudrate=1_000_000, max_id=20):
 	print(f"Scanning for servos on {port}...")
@@ -29,3 +30,5 @@ def scan_servos(port='/dev/ttyUSB0', baudrate=1_000_000, max_id=20):
 		
 if __name__ == "__main__":
 	scan_servos(port='/dev/ttyUSB0')
+	print(forward_kinematics(q))
+	relax_arm()

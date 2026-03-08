@@ -3,6 +3,9 @@ import subprocess
 import time
 import sys
 from multiprocessing import shared_memory
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning,
+module="multiprocessing")
 from multiprocessing.resource_tracker import unregister
 import numpy as np
 import cv2
@@ -51,6 +54,11 @@ def start_camera():
 def stop_camera():
     global _sender_process, _shm, _frame_buffer
     if _shm:
+        try:
+            from multiprocessing.resource_tracker import unregister
+            unregister(f"/{_shm.name}", "shared_memory")
+        except Exception:
+            pass
         _shm.close()
         _shm = None
     _frame_buffer = None

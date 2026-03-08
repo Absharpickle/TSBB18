@@ -1,0 +1,6 @@
+base: - left, + right
+shoulder: - forward, + backward
+elbow: + forward, - backward
+wrist: - forward, + backward
+---
+claw: + close, - open

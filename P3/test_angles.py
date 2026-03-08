@@ -1,7 +1,7 @@
 from rustypot import Sts3215PyController
 import time
 import math
-from limits import *
+from setup import *
 
 def set_arm(port='/dev/ttyUSB0', baudrate=1_000_000):
 	# Base, Shoulder, Elbow, Wrist, Twist, Claw

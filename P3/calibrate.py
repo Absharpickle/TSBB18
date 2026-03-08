@@ -10,10 +10,10 @@ CALIBRATION_FILE = "/home/marjoe/TSBB18/P3/homography.json"
 
 # Place 4 bricks at these exact positions on the table (metres)
 WORLD_POINTS = [
-    [2.0,  2.0],   # brick 1
-    [2.0, -2.0],   # brick 2
-    [0.0, -2.0],   # brick 3
-    [0.0,  2.0],   # brick 4
+    [1.0,  2.0],   # brick 1
+    [-1.0, 2.0],   # brick 2
+    [-1.0, 3.0],   # brick 3
+    [2.0,  3.0],   # brick 4
 ]
 
 # ─── CLICK HANDLER ────────────────────────────────────────────────────────────
