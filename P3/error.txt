@@ -1,4 +1,21 @@
-(cv) marjoe@raspberrypi:~/TSBB18/P3 $ /home/marjoe/miniconda3/envs/cv/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '
-/home/marjoe/miniconda3/envs/cv/lib/python3.11/multiprocessing/resource_tracker.py:267: UserWarning: resource_tracker: '/camera_shm_hd': [Errno 2] No such file or directory: '/camera_shm_hd'
-  warnings.warn('resource_tracker: %r: %s' % (name, e))
+(cv) marjoe@raspberrypi:~/TSBB18/P3 $ python check_IDs.py
+Scanning for servos on /dev/ttyUSB0...
+[+] Found active servo at ID 1 | Current position: [0.0337475773334841]
+[+] Found active servo at ID 2 | Current position: [-0.6396699885483126]
+[+] Found active servo at ID 3 | Current position: [1.2363885150358271]
+[+] Found active servo at ID 4 | Current position: [-0.7086991240031661]
+[+] Found active servo at ID 5 | Current position: [0.04295146206079803]
+[+] Found active servo at ID 6 | Current position: [-1.1826991874598294]
+
+--- Scan Complete ---
+Found 6 servos. Active IDs: [1, 2, 3, 4, 5, 6]
+Traceback (most recent call last):
+  File "/home/marjoe/TSBB18/P3/check_IDs.py", line 39, in <module>
+    scan_servos(port='/dev/ttyUSB0')
+  File "/home/marjoe/TSBB18/P3/check_IDs.py", line 29, in scan_servos
+    tcp = forward_kinematics(angles)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/marjoe/TSBB18/P3/setup.py", line 38, in forward_kinematics
+    vertical   = (L2 * math.cos(shoulder)
+                       ^^^^^^^^^^^^^^^^^^
+TypeError: must be real number, not list
