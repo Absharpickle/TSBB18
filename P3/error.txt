@@ -1,21 +1,52 @@
-(cv) marjoe@raspberrypi:~/TSBB18/P3 $ python check_IDs.py
-Scanning for servos on /dev/ttyUSB0...
-[+] Found active servo at ID 1 | Current position: [0.0337475773334841]
-[+] Found active servo at ID 2 | Current position: [-0.6396699885483126]
-[+] Found active servo at ID 3 | Current position: [1.2363885150358271]
-[+] Found active servo at ID 4 | Current position: [-0.7086991240031661]
-[+] Found active servo at ID 5 | Current position: [0.04295146206079803]
-[+] Found active servo at ID 6 | Current position: [-1.1826991874598294]
+(cv) marjoe@raspberrypi:~/TSBB18/P3 $ python main_safe.py
+Connected to arm, configuring limits...
+Returning to home position...
+[SAFE MODE] Original: ['0.000', '0.000', '0.000', '0.000']
+[SAFE MODE] Scaled:   ['0.000', '0.000', '0.000', '0.000']
+Home position reached.
+Launching Camera Sender...
+Initializing Camera...
+[7:44:03.053465326] [7615]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[7:44:03.102813869] [7618]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx219.json
+[7:44:03.112412847] [7618]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@1/imx219@10' for pipeline handler rpi/vc4
+[7:44:03.112532087] [7618]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@1/imx219@10 to Unicam device /dev/media2 and ISP device /dev/media0
+[7:44:03.112609216] [7618]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+[7:44:03.120992095] [7615]  INFO Camera camera.cpp:1215 configuring streams: (0) 1280x720-XRGB8888/sRGB (1) 1920x1080-SBGGR10_CSI2P/RAW
+[7:44:03.121625107] [7618]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@1/imx219@10 - Selected sensor format: 1920x1080-SBGGR10_1X10/RAW - Selected unicam format: 1920x1080-pBAA/RAW
+Shared Memory 'camera_shm_hd' ready.
+Broadcasting...
+Connected to shared memory.
+Detected 1 brick(s).
 
---- Scan Complete ---
-Found 6 servos. Active IDs: [1, 2, 3, 4, 5, 6]
+→ Picking up Red at (-0.36, 2.40)
+[SAFE MODE] Original: ['0.000', '0.000', '1.000', '-1.000']
+[SAFE MODE] Scaled:   ['0.000', '0.000', '1.000', '-1.000']
 Traceback (most recent call last):
-  File "/home/marjoe/TSBB18/P3/check_IDs.py", line 39, in <module>
-    scan_servos(port='/dev/ttyUSB0')
-  File "/home/marjoe/TSBB18/P3/check_IDs.py", line 29, in scan_servos
-    tcp = forward_kinematics(angles)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/marjoe/TSBB18/P3/setup.py", line 38, in forward_kinematics
-    vertical   = (L2 * math.cos(shoulder)
-                       ^^^^^^^^^^^^^^^^^^
-TypeError: must be real number, not list
+  File "/home/marjoe/miniconda3/envs/cv/lib/python3.11/multiprocessing/resource_tracker.py", line 239, in main
+    cache[rtype].remove(name)
+KeyError: 'camera_shm_hd'
+[SAFE MODE] Original: ['-0.149', '-0.234', '0.901', '-0.768']
+[SAFE MODE] Scaled:   ['-0.149', '-0.234', '0.901', '-0.768']
+[SAFE MODE] Original: ['-0.150', '-0.592', '1.068', '-0.779']
+[SAFE MODE] Scaled:   ['-0.150', '-0.592', '1.068', '-0.779']
+→ Dropping at (2.5, -0.5)
+[SAFE MODE] Original: ['-0.150', '-0.245', '0.876', '-0.791']
+[SAFE MODE] Scaled:   ['-0.150', '-0.245', '0.876', '-0.791']
+[SAFE MODE] Original: ['1.768', '-0.213', '0.989', '-0.658']
+[SAFE MODE] Scaled:   ['1.768', '-0.213', '0.989', '-0.658']
+[SAFE MODE] Original: ['1.768', '-0.569', '1.150', '-0.672']
+[SAFE MODE] Scaled:   ['1.768', '-0.569', '1.150', '-0.672']
+
+Signal 15 received. Stopping loop...
+Camera stopped.
+Returning to home position...
+Cleaning up resources...
+[SAFE MODE] Original: ['1.768', '-0.222', '0.965', '-0.682']
+[SAFE MODE] Scaled:   ['1.768', '-0.222', '0.965', '-0.682']
+Shared memory unlinked.
+Sender Stopped.
+[SAFE MODE] Original: ['0.000', '0.000', '0.000', '0.000']
+[SAFE MODE] Scaled:   ['0.000', '0.000', '0.000', '0.000']
+Home position reached.
+
+Done.
