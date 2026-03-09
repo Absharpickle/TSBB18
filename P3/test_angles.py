@@ -7,7 +7,7 @@ def set_arm(port='/dev/ttyUSB0', baudrate=1_000_000):
 	# Base, Shoulder, Elbow, Wrist, Twist, Claw
 	servo_ids = [1, 2, 3, 4, 5, 6]
 	
-	target_pos = [0.0, 0.0, 0.0, 0.0, 0.0, 0.65]
+	target_pos = [-0.4, 0.0, 0.0, 0.0, 0.0, 0.0]
 	
 	try:
 		print(f"Connecting to servos on {port}")
@@ -29,6 +29,6 @@ def set_arm(port='/dev/ttyUSB0', baudrate=1_000_000):
 		print(f"An error occured: {e}")
 			
 if __name__ == "__main__":
-	arm_limits(port='/dev/ttyUSB0')
+	#arm_limits(arm)
 	set_arm(port='/dev/ttyUSB0')
 	#relax_arm(port='/dev/ttyUSB0')

@@ -37,16 +37,14 @@ def pixel_to_world(px, py, H):
     return float(world[0][0][0]), float(world[0][0][1])
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
-print("=" * 50)
-print("  SAFE MODE — angles scaled to 1/4")
-print("=" * 50)
 
 H = load_homography()
 
 arm = Sts3215PyController(serial_port=PORT, baudrate=BAUDRATE, timeout=0.2)
-arm_limits()
+arm_limits(arm)
 home_arm(arm)
 start_camera()
+#move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
 
 try:
     bricks = detect_bricks()
@@ -69,5 +67,9 @@ try:
 finally:
     stop_camera()
     home_arm(arm)
-    relax_arm(arm)
+    for s_id in ALL_SERVO_IDS:
+        try:
+            arm.write_torque_enable(s_id, False)
+        except Exception:
+            pass
     print("\nDone.")

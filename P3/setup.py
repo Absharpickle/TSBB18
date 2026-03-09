@@ -15,21 +15,19 @@ PARALLAX_PULLBACK = -0.1
 
 Y_MIN = 2.0
 Y_MAX = 3.0
-X_MIN = -1.0
-X_MAX = 1.0
 
 ARM_SERVO_IDS = [1, 2, 3, 4]
 ALL_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 CLAW_ID       = 6
 CLAW_OPEN     = -0.4
 CLAW_CLOSED   = 0.6
-MAX_VEL       = 0.5
+MAX_VEL       = 1.4
 
 DROP_ZONES = {
-    "Red":    (1.8,  1.5),
-    "Green":  (1.8,  0.5),
-    "Blue":   (1.8, -0.5),
-    "Yellow": (1.8, -1.5),
+    "Red":    (2.5,  0.0),
+    "Green":  (-2.5, 1.2),
+    "Blue":   (2.5, 1.2),
+    "Yellow": (-2.5, 0.0),
 }
 
 # ─── FORWARD KINEMATICS ───────────────────────────────────────────────────────
@@ -67,7 +65,8 @@ def get_numerical_jacobian(q, delta=1e-4):
 
 def calculate_jacobian_ik(target_pos, max_iter=500, tol=1e-3, alpha=0.5):
     seed = math.atan2(target_pos[1], target_pos[0])
-    q    = [seed * 0.5, 1.0, 1.8, seed * -0.5]
+    
+    q = list(current_q)
 
     joint_limits = [
         (-math.pi, math.pi),
@@ -99,6 +98,25 @@ def get_floor_z(world_y):
     t = (world_y - Y_MIN) / (Y_MAX - Y_MIN)
     t = max(0.0, min(1.0, t))
     return FLOOR_Z_Y_MIN + t * (FLOOR_Z_Y_MAX-FLOOR_Z_Y_MIN)
+    
+def check_z(floor_z, world_x, world_y):
+    #if world_y > 2.5:
+        #floor_z += 0.1
+        
+    if 0.5 < world_x < 1.0:
+        floor_z += 0.1
+        
+    elif -1.0 < world_x < -0.5:
+        floor_z +=0.05
+        
+    elif -1.5 < world_x < -1.0 or 1.0 < world_x < 1.5:
+        floor_z += 0.15
+        
+    elif -0.5 < world_x < 0.5:
+        floor_z += 0.03 * world_y
+    
+    return floor_z
+    
 # ─── ARM CONTROL ──────────────────────────────────────────────────────────────
 
 current_q = [0.0, 1.0, 1.8, 0.0]
@@ -108,7 +126,7 @@ def move_arm_physical(arm, q):
     global current_q
     current   = arm.sync_read_present_position(ARM_SERVO_IDS)
     max_delta = max(abs(q[i] - current[i]) for i in range(4))
-    wait_time = max(1.0, (max_delta / MAX_VEL) * 1.25)
+    wait_time = max(0.1, (max_delta / MAX_VEL) * 1.15)
     arm.sync_write_goal_position(ARM_SERVO_IDS, q)
     time.sleep(wait_time)
     current_q = q
@@ -116,12 +134,12 @@ def move_arm_physical(arm, q):
 
 def open_claw(arm):
     arm.sync_write_goal_position([CLAW_ID], [CLAW_OPEN])
-    time.sleep(0.8)
+    time.sleep(0.1)
 
 
 def close_claw(arm):
     arm.sync_write_goal_position([CLAW_ID], [CLAW_CLOSED])
-    time.sleep(0.8)
+    time.sleep(0.6)
 
 
 def move_to_xyz(arm, target_x, target_y, target_z, apply_parallax=False):
@@ -154,16 +172,17 @@ def move_to_xyz(arm, target_x, target_y, target_z, apply_parallax=False):
 def pick_up_lego(arm, world_x, world_y):
     open_claw(arm)
     floor_z = get_floor_z(world_y)
-    #move_to_xyz(arm, world_x, world_y, target_z=0.60, apply_parallax=True)
+    floor_z = check_z(floor_z, world_x, world_y)
+    #if world_x < -0.5 or world_x > 0.5:
+       # floor_z += 0.1
     move_to_xyz(arm, world_x, world_y, target_z=floor_z, apply_parallax=True)
     close_claw(arm)
 
 
 def drop_lego(arm, storage_x, storage_y):
-    move_to_xyz(arm, storage_x, storage_y, target_z=0.80)
+    #move_to_xyz(arm, storage_x, storage_y, target_z=SAFE_TRANSIT_Z)
     move_to_xyz(arm, storage_x, storage_y, target_z=0.3)
     open_claw(arm)
-    move_to_xyz(arm, storage_x, storage_y, target_z=SAFE_TRANSIT_Z)
 
 
 def home_arm(arm):
@@ -176,15 +195,13 @@ def home_arm(arm):
     print("Home position reached.")
 
 
-def arm_limits(port=PORT, baudrate=BAUDRATE):
+def arm_limits(arm):
     try:
-        arm = Sts3215PyController(serial_port=port, baudrate=baudrate, timeout=0.2)
         print("Connected to arm, configuring limits...")
         for s_id in ALL_SERVO_IDS:
-            arm.write_torque_limit(s_id, 400)
-            arm.write_goal_speed(s_id, 500)
-            arm.write_goal_acceleration(s_id, 50)
-        print("-> Max Torque: 400 | Max Speed: 500 | Max Acceleration: 50")
+            arm.write_torque_limit(s_id, 500)
+            arm.write_goal_speed(s_id, 10)
+            arm.write_goal_acceleration(s_id, 20)
     except Exception as e:
         print(f"Error configuring arm: {e}")
 

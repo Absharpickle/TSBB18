@@ -23,7 +23,7 @@ COLOR_RANGES = {
     "Green":  [(np.array([ 35,  50,  50]), np.array([ 90, 255, 255]))],
     "Yellow": [(np.array([ 20, 170, 150]), np.array([ 35, 255, 255]))],
 }
-MIN_CONTOUR_AREA = 5000
+MIN_CONTOUR_AREA = 400
 
 # ─── GLOBALS ──────────────────────────────────────────────────────────────────
 _sender_process = None
