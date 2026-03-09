@@ -3,7 +3,7 @@ import json
 import sys
 import numpy as np
 import cv2
-from image_processing.image_processing import start_camera, stop_camera, get_frame
+from image_processing.image_processing import start_camera, stop_camera, get_frame, detect_bricks
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 CALIBRATION_FILE = "/home/marjoe/TSBB18/P3/homography.json"

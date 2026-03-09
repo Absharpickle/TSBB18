@@ -2,13 +2,14 @@ import time
 import math
 import numpy as np
 from rustypot import Sts3215PyController
+from image_processing.image_processing import detect_bricks
 
 # ─── CONFIGURATION ────────────────────────────────────────────────────────────
 
 PORT     = "/dev/ttyUSB0"
 BAUDRATE = 1_000_000
 
-SAFE_TRANSIT_Z    = 0.75
+SAFE_TRANSIT_Z    = 1.6
 FLOOR_Z_Y_MAX     = 0.35
 FLOOR_Z_Y_MIN     = 0.15
 PARALLAX_PULLBACK = -0.1
@@ -24,10 +25,10 @@ CLAW_CLOSED   = 0.6
 MAX_VEL       = 1.4
 
 DROP_ZONES = {
-    "Red":    (2.5,  0.0),
+    "Red":    (2.5,  -0.5),
     "Green":  (-2.5, 1.2),
     "Blue":   (2.5, 1.2),
-    "Yellow": (-2.5, 0.0),
+    "Yellow": (-2.5, -0.5),
 }
 
 # ─── FORWARD KINEMATICS ───────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ def check_z(floor_z, world_x, world_y):
         floor_z += 0.1
         
     elif -1.0 < world_x < -0.5:
-        floor_z +=0.05
+        floor_z += 0.15
         
     elif -1.5 < world_x < -1.0 or 1.0 < world_x < 1.5:
         floor_z += 0.15
@@ -173,8 +174,8 @@ def pick_up_lego(arm, world_x, world_y):
     open_claw(arm)
     floor_z = get_floor_z(world_y)
     floor_z = check_z(floor_z, world_x, world_y)
-    #if world_x < -0.5 or world_x > 0.5:
-       # floor_z += 0.1
+    #move_to_xyz(arm, world_x, world_y, target_z=SAFE_TRANSIT_Z, apply_parallax=True)
+    move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
     move_to_xyz(arm, world_x, world_y, target_z=floor_z, apply_parallax=True)
     close_claw(arm)
 
@@ -199,9 +200,9 @@ def arm_limits(arm):
     try:
         print("Connected to arm, configuring limits...")
         for s_id in ALL_SERVO_IDS:
-            arm.write_torque_limit(s_id, 500)
-            arm.write_goal_speed(s_id, 10)
-            arm.write_goal_acceleration(s_id, 20)
+            arm.write_torque_limit(s_id, 400)
+            #arm.write_goal_speed(s_id, 10)
+            #arm.write_goal_acceleration(s_id, 20)
     except Exception as e:
         print(f"Error configuring arm: {e}")
 

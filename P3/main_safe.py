@@ -35,6 +35,37 @@ def pixel_to_world(px, py, H):
     pt = np.array([[[px, py]]], dtype=np.float32)
     world = cv2.perspectiveTransform(pt, H)
     return float(world[0][0][0]), float(world[0][0][1])
+    
+def detect_move(original_bricks, H, threshold=0.15):
+    
+    current_bricks = detect_bricks()
+    moved = []
+    
+    for orig in original_bricks:
+        ox, oy = pixel_to_world(*orig["pixel"], H)
+        
+        match = min(
+        (abs(pixel_to_world(*b["pixel"], H)[0] - ox) +
+        abs(pixel_to_world(*b["pixel"], H)[1] - oy))
+        
+        for b in current_bricks if b["color"] == orig["color"]
+        ) if any(b["color"] == orig["color"] for b in current_bricks) else 999
+        
+        if match > threshold:
+            moved.append(orig)
+    return moved
+    
+def near_drop(wx, wy, margin=0.3):
+    return any(
+    abs(wx - dx) < margin and abs(wy - dy) < margin
+    for dx, dy in DROP_ZONES.values()
+    )
+    
+def get_active_bricks(H):
+    return [
+        b for b in detect_bricks()
+        if not near_drop(*pixel_to_world(*b["pixel"], H))
+    ]
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
@@ -47,22 +78,23 @@ start_camera()
 #move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
 
 try:
-    bricks = detect_bricks()
+    bricks = get_active_bricks(H)
+    
     print(f"Detected {len(bricks)} brick(s).")
     
 
-    for brick in bricks:
-            
+    while bricks:
+        brick = bricks[0]
         color = brick["color"]
-        px, py = brick["pixel"]
-        world_x, world_y = pixel_to_world(px, py, H)
-        drop_x, drop_y = DROP_ZONES.get(color, DROP_ZONES["Red"])
+        world_x, world_y = pixel_to_world(*brick["pixel"], H)
 
         print(f"\n→ Picking up {color} at ({world_x:.2f}, {world_y:.2f})")
         pick_up_lego(arm, world_x, world_y)
 
-        print(f"→ Dropping at ({drop_x:.2f}, {drop_y:.2f})")
-        drop_lego(arm, drop_x, drop_y)
+        print(f"→ Dropping at {DROP_ZONES[color]}")
+        drop_lego(arm, *DROP_ZONES[color])
+        
+        bricks = get_active_bricks(H)
 
 finally:
     stop_camera()
