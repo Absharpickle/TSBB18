@@ -4,6 +4,8 @@ import time
 from multiprocessing import shared_memory
 import numpy as np
 from picamera2 import Picamera2
+import warnings
+import os
 
 # --- CONFIGURATION ---
 SHM_NAME = "camera_shm_hd"
@@ -26,7 +28,7 @@ signal.signal(signal.SIGINT, handle_stop_signals)  # Ctrl+C
 signal.signal(signal.SIGTERM, handle_stop_signals) # process.terminate()
 
 # --- CAMERA SETUP ---
-print("Initializing Camera...")
+print("Initializing Camera.")
 picam2 = Picamera2()
 config = picam2.create_preview_configuration(main={"size": (WIDTH, HEIGHT), "format": "XRGB8888"})
 picam2.configure(config)
@@ -43,19 +45,15 @@ except FileExistsError:
 frame_buffer = np.ndarray((HEIGHT, WIDTH, CHANNELS), dtype=np.uint8, buffer=shm.buf)
 
 print(f"Shared Memory '{SHM_NAME}' ready.")
-print("Broadcasting...")
+print("Broadcasting.")
 
 # --- MAIN LOOP ---
 try:
     while running:
-        # 1. Capture to local array
+
         frame = picam2.capture_array()
-        
-        # 2. Copy to shared buffer
         frame_buffer[:] = frame
         
-        # Optional: Add a tiny sleep if you want to reduce CPU usage
-        # time.sleep(0.001)
 
 except Exception as e:
     print(f"Error in main loop: {e}")

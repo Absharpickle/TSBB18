@@ -34,13 +34,16 @@ _frame_buffer   = None
 # ─── CAMERA ───────────────────────────────────────────────────────────────────
 def start_camera():
     global _sender_process, _shm, _frame_buffer
-    print("Launching Camera Sender...")
-    _sender_process = subprocess.Popen([SYSTEM_PYTHON, SENDER_PATH])
+    print("Launching Camera Sender.")
+    _sender_process = subprocess.Popen([SYSTEM_PYTHON, SENDER_PATH],
+    stderr=open(os.devnull, 'w'))
     while True:
         try:
             _shm = shared_memory.SharedMemory(name=SHM_NAME)
-            try: unregister(_shm.name, "shared_memory")
-            except KeyError: pass
+            try: 
+                unregister(_shm.name, "shared_memory")
+            except Exception: 
+                pass
             print("Connected to shared memory.")
             break
         except FileNotFoundError:

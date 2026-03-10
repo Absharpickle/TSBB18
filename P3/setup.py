@@ -20,9 +20,9 @@ Y_MAX = 3.0
 ARM_SERVO_IDS = [1, 2, 3, 4]
 ALL_SERVO_IDS = [1, 2, 3, 4, 5, 6]
 CLAW_ID       = 6
-CLAW_OPEN     = -0.4
+CLAW_OPEN     = -0.5
 CLAW_CLOSED   = 0.6
-MAX_VEL       = 1.4
+MAX_VEL       = 2.0
 
 DROP_ZONES = {
     "Red":    (2.5,  -0.5),
@@ -140,7 +140,7 @@ def open_claw(arm):
 
 def close_claw(arm):
     arm.sync_write_goal_position([CLAW_ID], [CLAW_CLOSED])
-    time.sleep(0.6)
+    time.sleep(0.7)
 
 
 def move_to_xyz(arm, target_x, target_y, target_z, apply_parallax=False):
@@ -175,7 +175,7 @@ def pick_up_lego(arm, world_x, world_y):
     floor_z = get_floor_z(world_y)
     floor_z = check_z(floor_z, world_x, world_y)
     #move_to_xyz(arm, world_x, world_y, target_z=SAFE_TRANSIT_Z, apply_parallax=True)
-    move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
+    #move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
     move_to_xyz(arm, world_x, world_y, target_z=floor_z, apply_parallax=True)
     close_claw(arm)
 
@@ -187,7 +187,7 @@ def drop_lego(arm, storage_x, storage_y):
 
 
 def home_arm(arm):
-    print("Returning to home position...")
+    print("Returning to home position.")
     current_tcp = forward_kinematics(current_q)
     if current_tcp[2] < SAFE_TRANSIT_Z:
         lift_q = calculate_jacobian_ik([current_tcp[0], current_tcp[1], SAFE_TRANSIT_Z])
@@ -200,7 +200,10 @@ def arm_limits(arm):
     try:
         print("Connected to arm, configuring limits...")
         for s_id in ALL_SERVO_IDS:
-            arm.write_torque_limit(s_id, 400)
+            if s_id == 6:
+                arm.write_torque_limit(s_id, 350)
+            else:
+                arm.write_torque_limit(s_id, 800)
             #arm.write_goal_speed(s_id, 10)
             #arm.write_goal_acceleration(s_id, 20)
     except Exception as e:

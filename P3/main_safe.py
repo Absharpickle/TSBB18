@@ -16,7 +16,7 @@ _original_move_arm_physical = setup.move_arm_physical
 def _safe_move_arm_physical(arm, q):
     scaled = [a * ANGLE_SCALE for a in q]
     print(f"[SAFE MODE] Original: {[f'{a:.3f}' for a in q]}")
-    print(f"[SAFE MODE] Scaled:   {[f'{a:.3f}' for a in scaled]}")
+    #print(f"[SAFE MODE] Scaled:   {[f'{a:.3f}' for a in scaled]}")
     _original_move_arm_physical(arm, scaled)
 
 setup.move_arm_physical = _safe_move_arm_physical
@@ -75,7 +75,7 @@ arm = Sts3215PyController(serial_port=PORT, baudrate=BAUDRATE, timeout=0.2)
 arm_limits(arm)
 home_arm(arm)
 start_camera()
-#move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
+move_arm_physical(arm, [0.0, 0.0, 1.0, -1.0])
 
 try:
     bricks = get_active_bricks(H)
@@ -95,6 +95,9 @@ try:
         drop_lego(arm, *DROP_ZONES[color])
         
         bricks = get_active_bricks(H)
+        
+        if bricks and bricks[0] == brick:
+            bricks.append[bricks.pop(0)]
 
 finally:
     stop_camera()
