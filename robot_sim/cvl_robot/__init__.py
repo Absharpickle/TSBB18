@@ -3,8 +3,10 @@ import pybullet_data
 import time
 import numpy as np
 import cv2
+import random
+import math
 
-__all__ = ["initialize_simulation", "create_braccio_arm", "move_arm_to_position", "control_claw", "create_lego_brick", "move_brick_to_position", "remove_brick", "capture_image"]
+__all__ = ["initialize_simulation", "create_braccio_arm", "move_arm", "control_claw", "create_lego_brick", "move_brick_to_position", "remove_brick", "capture_image", "find_all_bricks", "get_pixel_coordinates", "move_to_xyz", "spawn_random_legos", "drop_lego_brick", "pick_up_lego", "standard_pose", "pixel_to_world_coordinates"]
 
 def initialize_simulation(gui=True):
     """
@@ -49,10 +51,10 @@ def create_braccio_arm(position=(0, 0, 0.2), scale=10):
 
 
 def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=False):
-
     targets = [np.deg2rad(base), np.deg2rad(shoulder), np.deg2rad(elbow), np.deg2rad(wrist)]
-    max_vel = 1.3
-    forces = 500.0 
+    max_vel = 1.3   # rad/s
+    forces = 500.0
+    sim_hz = 120
 
     for i in range(4):
         p.setJointMotorControl2(
@@ -64,9 +66,18 @@ def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=Fal
             maxVelocity=max_vel
         )
 
-    for _ in range(120): 
+    # How far does the biggest joint need to travel?
+    max_delta = max(
+        abs(targets[i] - p.getJointState(robot_id, i)[0])
+        for i in range(4)
+    )
+
+    # Steps needed = travel time × sim frequency, plus a 25% buffer to let it settle
+    sim_steps = max(120, int((max_delta / max_vel) * sim_hz * 1.25))
+
+    for _ in range(sim_steps):
         p.stepSimulation()
-        time.sleep(1./120.)
+        time.sleep(1. / sim_hz)
         
         if stop_on_contact:
             contacts_left = p.getContactPoints(bodyA=robot_id, linkIndexA=5)
@@ -92,34 +103,28 @@ def move_arm(robot_id, base=0, shoulder=0, elbow=0, wrist=0, stop_on_contact=Fal
                 break
 
 def control_claw(robot_id, open_claw=True):
-    GRIPPER_MIN = 0.0      # fully closed
-    GRIPPER_MAX = 0.3     # fully open
+    GRIPPER_MIN = 0.0
+    GRIPPER_MAX = 0.3
     target = GRIPPER_MAX if open_claw else GRIPPER_MIN
-
     max_vel = 0.4
-    force = 400.0
+    force = 500.0
 
-    p.setJointMotorControl2(
-        bodyUniqueId=robot_id,
-        jointIndex=5,
-        controlMode=p.POSITION_CONTROL,
-        targetPosition=target,
-        force=force,
-        maxVelocity=max_vel
-    )
-    
-    p.setJointMotorControl2(
-        bodyUniqueId=robot_id,
-        jointIndex=7,
-        controlMode=p.POSITION_CONTROL,
-        targetPosition=target,
-        force=force,
-        maxVelocity=max_vel
-    )
+    for joint_idx in [5, 7]:
+        p.setJointMotorControl2(
+            bodyUniqueId=robot_id, jointIndex=joint_idx,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=target, force=force, maxVelocity=max_vel
+        )
 
-    for _ in range(120):
+    # Scale steps to actual gripper travel, same pattern as move_arm
+    current_pos = p.getJointState(robot_id, 5)[0]
+    delta = abs(target - current_pos)
+    sim_steps = max(60, int((delta / max_vel) * 120 * 1.25))
+
+    for _ in range(sim_steps):
         p.stepSimulation()
-        time.sleep(1./120.)
+        time.sleep(1. / 120.)
+
 
 def state(robot_id):
     """
@@ -284,7 +289,408 @@ def capture_image(image_width=640, image_height=480, camera_position=(2, -4, 5),
         print(f"Error capturing and saving image: {e}")
         return None
 
+def find_all_bricks(rgb_image):
+    if rgb_image.shape[2] == 4:
+        bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGRA2BGR)
+    else:
+        bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
 
+    hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
+
+    color_ranges = {
+        "Red": [([0, 100, 100], [10, 255, 255]), ([160, 100, 100], [180, 255, 255])],
+        "Green": [([40, 50, 50], [90, 255, 255])],
+        "Blue": [([100, 150, 50], [140, 255, 255])],
+        "Yellow": [([20, 100, 100], [40, 255, 255])]
+    }
+
+    found_bricks = []
+
+    for color_name, ranges in color_ranges.items():
+        color_mask = np.zeros(hsv_image.shape[:2], dtype=np.uint8)
+        
+        for lower, upper in ranges:
+            mask = cv2.inRange(hsv_image, np.array(lower), np.array(upper))
+            color_mask = cv2.bitwise_or(color_mask, mask)
+
+        color_mask = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+        contours, _ = cv2.findContours(color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            # Ignore small countours
+            if 20 < area < 200:
+                x, y, w, h = cv2.boundingRect(contour)
+                cX = x + w // 2
+                cY = y + int(h * 0.25)
+                # Add brick to list
+                found_bricks.append((cX, cY, color_name))
+
+    return found_bricks
+
+def get_pixel_coordinates(image):
+    if image.shape[2] == 4:
+        display_image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    else:
+        display_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    coords = []
+    def click_event(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            coords.append([x, y])
+            cv2.circle(display_image, (x, y), 5, (255, 0, 0), -1)
+            cv2.imshow("Image", display_image)
+            print(f"Clicked at: ({x}, {y})")
+
+    cv2.imshow("Image", display_image)
+    cv2.setMouseCallback("Image", click_event)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    return coords
+
+TCP_OFFSET = [0.0, 0.0, -0.40]
+SAFE_TRANSIT_Z = 0.75
+
+def move_to_xyz(robot_id, target_x, target_y, target_z,
+                stop_on_contact=False, apply_parallax=False):
+    tip_index = 4
+
+    # Parallax correction only for camera-detected coordinates
+    if apply_parallax:
+        yaw = math.atan2(target_y, target_x)
+        pullback = 0.18  # 18 cm radial pullback to compensate camera perspective
+        adjusted_x = target_x - pullback * math.cos(yaw)
+        adjusted_y = target_y - pullback * math.sin(yaw)
+    else:
+        adjusted_x, adjusted_y = target_x, target_y
+
+    if stop_on_contact:
+        # --- Current TCP height ---
+        ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        ee_pos, ee_orn = ee_state[4], ee_state[5]
+        current_tcp, _ = p.multiplyTransforms(ee_pos, ee_orn, TCP_OFFSET, [0, 0, 0, 1])
+        current_z = current_tcp[2]
+
+        # Seed ignored/held bodies from current gripper contacts
+        ignored_ids = {robot_id}
+        held_bodies = set()
+        for c in (p.getContactPoints(bodyA=robot_id, linkIndexA=5) or ()) + \
+                 (p.getContactPoints(bodyA=robot_id, linkIndexA=7) or ()):
+            if c[2] != robot_id:
+                ignored_ids.add(c[2])
+                held_bodies.add(c[2])
+
+        z_distance = current_z - target_z
+        num_steps = max(1, int(abs(z_distance) * 100))
+
+        for s in range(1, num_steps + 1):
+            step_z = current_z - (z_distance * (s / num_steps))
+
+            joint_poses = calculate_jacobian_ik(
+                robot_id, tip_index, [adjusted_x, adjusted_y, step_z]
+            )
+            for i in range(4):
+                p.setJointMotorControl2(
+                    bodyUniqueId=robot_id, jointIndex=i,
+                    controlMode=p.POSITION_CONTROL,
+                    targetPosition=joint_poses[i],
+                    force=500.0, maxVelocity=2.0
+                )
+
+            for _ in range(5):
+                p.stepSimulation()
+                time.sleep(1 / 240)
+
+            # Check gripper contacts
+            c_l = p.getContactPoints(bodyA=robot_id, linkIndexA=5) or ()
+            c_r = p.getContactPoints(bodyA=robot_id, linkIndexA=7) or ()
+            hit = any(c[2] not in ignored_ids for c in (c_l + c_r))
+
+            # Check if any held body has made a new contact
+            if not hit:
+                for held_body in held_bodies:
+                    if any(c[2] not in ignored_ids
+                           for c in (p.getContactPoints(bodyA=held_body) or [])):
+                        hit = True
+                        break
+
+            if hit:
+                print(f"Contact detected at Z: {step_z:.3f}")
+                break
+
+        # Let physics settle after contact stop
+        for _ in range(60):
+            p.stepSimulation()
+            time.sleep(1 / 240)
+
+    else:
+        # --- Get current TCP position ---
+        ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        ee_pos, ee_orn = ee_state[4], ee_state[5]
+        current_tcp, _ = p.multiplyTransforms(ee_pos, ee_orn, TCP_OFFSET, [0, 0, 0, 1])
+        current_z = current_tcp[2]
+
+        # --- Phase 1: Lift straight up if below safe transit height ---
+        if current_z < SAFE_TRANSIT_Z:
+            lift_poses = calculate_jacobian_ik(
+                robot_id, tip_index,
+                [current_tcp[0], current_tcp[1], SAFE_TRANSIT_Z]
+            )
+            move_arm(robot_id,
+                     base=np.rad2deg(lift_poses[0]),
+                     shoulder=np.rad2deg(lift_poses[1]),
+                     elbow=np.rad2deg(lift_poses[2]),
+                     wrist=np.rad2deg(lift_poses[3]))
+
+        # --- Phase 2: Swing to target XY at safe transit height ---
+        xy_distance = math.sqrt((adjusted_x - current_tcp[0])**2 + (adjusted_y - current_tcp[1])**2)
+        if xy_distance > 0.01:  # Only swing if XY meaningfully differs
+            transit_z = max(target_z, SAFE_TRANSIT_Z)
+            swing_poses = calculate_jacobian_ik(
+                robot_id, tip_index, [adjusted_x, adjusted_y, transit_z]
+            )
+            move_arm(robot_id,
+                    base=np.rad2deg(swing_poses[0]),
+                    shoulder=np.rad2deg(swing_poses[1]),
+                    elbow=np.rad2deg(swing_poses[2]),
+                    wrist=np.rad2deg(swing_poses[3]))
+
+
+        # --- Phase 3: Descend to actual target Z if below transit height ---
+        if target_z < SAFE_TRANSIT_Z:
+            descent_poses = calculate_jacobian_ik(
+                robot_id, tip_index, [adjusted_x, adjusted_y, target_z]
+            )
+            move_arm(robot_id,
+                     base=np.rad2deg(descent_poses[0]),
+                     shoulder=np.rad2deg(descent_poses[1]),
+                     elbow=np.rad2deg(descent_poses[2]),
+                     wrist=np.rad2deg(descent_poses[3]))
+
+def spawn_random_legos():
+    
+    colors = {
+        "red": [1, 0, 0],
+        "green": [0, 1, 0],
+        "blue": [0, 0, 1],
+        "yellow": [1, 1, 0]
+    }
+    color_choices = list(colors.values())
+    
+    spawned_bricks = []
+    spawned_positions = [] 
+    
+    min_distance_between_bricks = 0.4
+    min_distance_from_robot = 0.8      
+
+    for i in range(5):
+        valid_position = False
+        
+        while not valid_position:
+            rand_x = random.uniform(0.5, 1.9) 
+            rand_y = random.uniform(-1.8, 1.9)
+            
+            valid_position = True
+        
+            distance_to_robot = math.sqrt(rand_x**2 + rand_y**2)
+            if distance_to_robot < min_distance_from_robot:
+                valid_position = False
+                continue
+            
+            for (px, py) in spawned_positions:
+                distance = math.sqrt((rand_x - px)**2 + (rand_y - py)**2)
+                if distance < min_distance_between_bricks:
+                    valid_position = False 
+                    break
+                    
+        spawned_positions.append((rand_x, rand_y)) 
+        
+        rand_z = 0.1 
+        rand_color = random.choice(color_choices)
+        
+        brick_id = create_lego_brick(
+            color=rand_color,
+            position=(rand_x, rand_y, rand_z)
+        )
+        spawned_bricks.append(brick_id)
+        
+        for _ in range(50):
+            p.stepSimulation()
+            
+    return spawned_bricks
+
+def drop_lego_brick(robot_id, storage_x, storage_y):
+    # Hover above the drop zone
+    move_to_xyz(robot_id, storage_x, storage_y, target_z=0.80)
+    
+    # Lower until the brick (or claw) touches the floor or stack
+    move_to_xyz(robot_id, storage_x, storage_y, target_z=0.05, stop_on_contact=True) 
+    
+    # Open the claw
+    control_claw(robot_id, open_claw=True)
+    
+    # Move back up slightly after dropping to avoid knocking the stack over
+    move_to_xyz(robot_id, storage_x, storage_y, target_z=SAFE_TRANSIT_Z)
+
+def pick_up_lego(robot_id, target_x, target_y):
+    control_claw(robot_id, open_claw=True)
+    move_to_xyz(robot_id, target_x, target_y, target_z=0.60, apply_parallax=True)
+    move_to_xyz(robot_id, target_x, target_y, target_z=0.05,
+                stop_on_contact=True, apply_parallax=True)
+    control_claw(robot_id, open_claw=False)
+    for _ in range(120):
+        p.stepSimulation()
+        time.sleep(1. / 120.)
+         
+def standard_pose(robot_id):
+    print("Lifting arm to upright position")
+    
+    base_rad = p.getJointState(robot_id, 0)[0]
+    shoulder_rad = p.getJointState(robot_id, 1)[0]
+    elbow_rad = p.getJointState(robot_id, 2)[0]
+    wrist_rad = p.getJointState(robot_id, 3)[0]
+    
+    # 2. Konvertera till grader
+    current_base = np.rad2deg(base_rad)
+    current_shoulder = np.rad2deg(shoulder_rad)
+    current_elbow = np.rad2deg(elbow_rad)
+    current_wrist = np.rad2deg(wrist_rad)
+    
+    if current_wrist < -10:
+        upright_shoulder = current_shoulder + 30
+    elif current_wrist > 10:
+        upright_shoulder = current_shoulder - 30
+    else:
+        upright_shoulder = current_shoulder
+    
+    move_arm(robot_id, 
+                       base=current_base, 
+                       shoulder=upright_shoulder, 
+                       elbow=current_elbow, 
+                       wrist=current_wrist)
+
+    for _ in range(120):
+        p.stepSimulation()
+        time.sleep(1./120.)
+    
+    print("Arm is in upright position")
+
+def pixel_to_world_coordinates(cX, cY):
+    image_points = np.array([
+        [317, 150],     # Values from calibration
+        [316, 364], 
+        [150, 366], 
+        [207, 150]
+    ], dtype=np.float32)
+
+    world_points = np.array([
+        [2.0, 2.0],
+        [2.0, -2.0],
+        [0.0, -2.0],
+        [0.0, 2.0]
+    ], dtype=np.float32)
+
+    H, _ = cv2.findHomography(image_points, world_points)
+
+    point_homogeneous = np.array([[[cX, cY]]], dtype=np.float32)
+    world_point_homogeneous = cv2.perspectiveTransform(point_homogeneous, H)
+
+    world_point_x = world_point_homogeneous[0][0][0]
+    world_point_y = world_point_homogeneous[0][0][1]
+    return world_point_x, world_point_y
+
+def get_numerical_jacobian(robot_id, tip_index, q_current, arm_dof_indices, tcp_offset, delta=1e-4):
+    num_dof = len(arm_dof_indices)
+    J_arm = np.zeros((3, num_dof))
+
+    # Work on a copy so the caller's q is never mutated
+    q = list(q_current)
+
+    for i, j_idx in enumerate(arm_dof_indices):
+
+        # --- Forward perturbation ---
+        q[i] += delta
+        p.resetJointState(robot_id, j_idx, q[i])
+        ee_fwd = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        pos_fwd, orn_fwd = ee_fwd[4], ee_fwd[5]
+        tcp_fwd, _ = p.multiplyTransforms(pos_fwd, orn_fwd, tcp_offset, [0, 0, 0, 1])
+
+        # --- Backward perturbation ---
+        q[i] -= 2 * delta
+        p.resetJointState(robot_id, j_idx, q[i])
+        ee_bwd = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        pos_bwd, orn_bwd = ee_bwd[4], ee_bwd[5]
+        tcp_bwd, _ = p.multiplyTransforms(pos_bwd, orn_bwd, tcp_offset, [0, 0, 0, 1])
+
+        # --- Central difference ---
+        J_arm[:, i] = (np.array(tcp_fwd) - np.array(tcp_bwd)) / (2 * delta)
+
+        # --- Restore ---
+        q[i] += delta
+        p.resetJointState(robot_id, j_idx, q[i])
+
+    return J_arm
+
+def calculate_jacobian_ik(robot_id, tip_index, target_pos, max_iter=500, tol=1e-3, alpha=0.5):
+    num_joints = p.getNumJoints(robot_id)
+    arm_dof_indices = [0, 1, 2, 3]
+
+    # Save full simulation state so IK solve doesn't pollute the world
+    saved_states = [p.getJointState(robot_id, i)[0] for i in range(num_joints)]
+
+    # Seed from preferred elbow-down posture — ensures consistent solution branch
+    seed = math.atan2(target_pos[1], target_pos[0])
+    base_seed = seed * 0.5
+    wrist_seed = seed * -0.5
+    q = [base_seed, 1.0, 1.8, wrist_seed] # Adjust this if arm flips
+
+    # Joint limits read from URDF, with manual overrides where needed
+    joint_limits = []
+    for j_idx in arm_dof_indices:
+        info = p.getJointInfo(robot_id, j_idx)
+        lower, upper = info[8], info[9]
+        if lower == 0 and upper == 0:
+            lower, upper = -np.pi, np.pi
+        joint_limits.append((lower, upper))
+    joint_limits[1] = (-1.4,  1.4)   # Shoulder
+    joint_limits[2] = (-2.6,  2.6)   # Elbow
+
+    tcp_offset = TCP_OFFSET
+
+    for _ in range(max_iter):
+        for i, j_idx in enumerate(arm_dof_indices):
+            p.resetJointState(robot_id, j_idx, q[i])
+
+        ee_state = p.getLinkState(robot_id, tip_index, computeForwardKinematics=True)
+        ee_pos, ee_orn = ee_state[4], ee_state[5]
+        current_pos, _ = p.multiplyTransforms(ee_pos, ee_orn, tcp_offset, [0, 0, 0, 1])
+        current_pos = np.array(current_pos)
+
+        error = np.array(target_pos) - current_pos
+        error_norm = np.linalg.norm(error)
+        if error_norm < tol:
+            break
+
+        J = get_numerical_jacobian(robot_id, tip_index, q, arm_dof_indices, tcp_offset)
+
+        # Variable damping: increase λ near singularities
+        manipulability = np.sqrt(max(0.0, np.linalg.det(J @ J.T)))
+        lambda_sq = 0.04 if manipulability > 0.01 else 0.1
+
+        # Damped Least Squares pseudoinverse
+        J_pinv = J.T @ np.linalg.inv(J @ J.T + lambda_sq * np.eye(3))
+
+        dq = np.clip(alpha * (J_pinv @ error), -0.15, 0.15)
+
+        for i in range(len(arm_dof_indices)):
+            q[i] = np.clip(q[i] + dq[i], joint_limits[i][0], joint_limits[i][1])
+
+    # Restore simulation state before returning
+    for i in range(num_joints):
+        p.resetJointState(robot_id, i, saved_states[i])
+
+    return q
 
 
 
